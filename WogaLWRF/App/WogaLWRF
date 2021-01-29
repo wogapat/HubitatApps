@@ -121,30 +121,6 @@
                 input "testapi", "bool", title: "${state.formatSettingRootStart}Check API${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
                 input "stateread", "bool", title: "${state.formatSettingRootStart}Batch state read from Lightwave${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
             }
-    ////////////////////////////////////////////Begin Testing Section
-            section(""){
-                input "testgetevents", "bool", title: "${state.formatSettingRootStart}Get events${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
-                input "testgetspecificevent", "bool", title: "${state.formatSettingRootStart}Get specific events${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
-                input "testcreateevent", "bool", title: "${state.formatSettingRootStart}Create event${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
-                input "testupdateevent", "bool", title: "${state.formatSettingRootStart}Delete event${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true     
-            }
-            if (testgetevents) {
-                getEvents()
-                testgetevents = false
-            }
-            if (testcreateevent) {
-                testCreateEvent()
-                testcreateevent = false
-            }
-            if (testupdateevent) {
-                deleteEvent()
-                testupdateevent = false
-            }
-            if (testgetspecificevent) {
-                getSpecificEvent()
-                testgetspecificevent = false
-            }
-    ////////////////////////////////////////////End Testing Section
             if (debugmode) { 
                 if (state.debugMode == false || state?.debugMode == null){
                     state.debugMode = true; myRunIn(1800, disableDebug); LOGTRACE("Debug logging has been enabled.  Will auto-disable in 30 minutes.")
@@ -163,25 +139,6 @@
 
         }
     }    
-
- ////////////////////////////////////////////Begin Testing Section  
-    def pageCreateNewDevices() {
-        if (!state.configChildrenExist == true) {}
-        dynPageProperties = [
-            name:       "pageCreateDevices",
-            title:      "Creating devices",
-            install:    true,
-            uninstall:  false
-        ]
-
-        return dynamicPage(dynPageProperties) {
-            section() {
-                def CreateNewDevices = ""
-                paragraph(CreateDevices)
-            }
-        }
-    }
- ////////////////////////////////////////////End Testing Section
 
     def pageCreateDevices() {
         createDevices()
@@ -413,12 +370,6 @@
         }
     }
 
-
-
-
-
-
-
     def getFeatureReadBatch() {
         def soutJson = new JsonSlurper().parseText(state.strFeatureRead)
         String jsonFeatureRead = JsonOutput.toJson(soutJson)
@@ -523,9 +474,7 @@
                         default:
                             state.deviceDetail[key].features << ["${featureType}": ["featureId": "${featureId}", "writable": "${featureWritable}"]]
                     }
-
-
-                                
+                             
                     //get the response type for correct event sending
                     responseType = defineResponseType(featureType)
 
@@ -542,16 +491,13 @@
         }
         //add webhook value
         
-
         //create feature states for bulk read of features
         state.strFeatureRead = '{"features": '+arrFeatureId+'}'
         state.finalDeviceList = deviceList.sort() //{ it.value.toLowerCase() }
         state.configGetAstructure = true
 
         LOGDEBUG("created App Data")
-
     }
-
 
     def getAstructure(){
         state.configGetAstructure = false
@@ -566,13 +512,11 @@
             httpGet(params) { resp ->
                 if (resp.data) {
                     data = resp.data
- 
-
-                    
+                
                     createAppData(data)
 
-                LOGTRACE("getAstructure() OK")
-            }
+ 	            LOGTRACE("getAstructure() OK")
+            	}
             }
         } catch (e) {
             def error = e.toString()
@@ -681,111 +625,20 @@
         }
     }
 
-    //////////Begin - Testing secion/////////////////
-    def deleteEvent(){
-        otherEventId2 = "484switch"
-
-        params = [
-            uri: apiEventsPath() + otherEventId2,
-            contentType: "application/json",
-            //body: jsonBody,
-            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
-            ]
-        LOGDEBUG("${params}")
-        try {
-            httpDelete(params) { resp ->
-                if (resp.status == 200) {
-                    LOGDEBUG("${resp.data}")
-             
-                    LOGTRACE("deleteEvent() OK")
-                    return "ok"
-                }
-            }
-        } catch (e) {
-            def error = e.toString()
-            LOGTRACE("Error in deleteEvent() call")
-            LOGERROR("${error}")
-            state.apiLastError = error
-        }
-    }
-
-    def getSpecificEvent() {
-        otherEventId = "testevent"
-        otherEventId2 = "testsideboardlight"
-
-        params = [
-            uri: apiEventsPath() + otherEventId2,
-            contentType: "application/json",
-            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
-            ]
-
-        try {
-            httpGet(params) { resp ->
-                if (resp.status == 200) {
-                    LOGDEBUG("${resp.data}")
-             
-                    LOGTRACE("getEvents() OK")
-                }
-            }
-        } catch (e) {
-            def error = e.toString()
-            LOGTRACE("Error in getEvents() call")
-            LOGERROR("${error}")
-            state.apiLastError = error
-        }
-    }
-
 def sendWebhookState(deviceId) {
-                        properties = ["name": "webhooks", "value": "true"]
-                        try {
-                            sendEvent(deviceId, properties)
-                            LOGTRACE("Set ${deviceId} webhooks to true")
-                            LOGTRACE("Webhooks created for ${deviceId}}")
+	properties = ["name": "webhooks", "value": "true"]
+        
+	try {
+		sendEvent(deviceId, properties)
+		LOGTRACE("Set ${deviceId} webhooks to true")
+		LOGTRACE("Webhooks created for ${deviceId}}")
                             
-                        } catch (e) {
-                            def error = e.toString()
-                            LOGTRACE("setChildWebhookSwitch()")
-                            LOGERROR("${error}")
-                        
-                        }
+	} catch (e) {
+		def error = e.toString()
+		LOGTRACE("setChildWebhookSwitch()")
+		LOGERROR("${error}")
+	}
 }
-
-   def testCreateEvent() {
-       featureType = "switch"
-       makerDeviceId = "484"
-       featureId = "59f9ed165737ec1f45cf5966-15-3157328246+0"
-       
-
-        strBody = '{"events": [{"type": "feature", "id": "'+featureId+'"}],"url": "https://cloud.hubitat.com/api/43a51a00-67c7-4d5a-8d1a-282b2d12dc04/apps/129/devices/'+makerDeviceId+'/webhookevent?access_token=92799833-b974-420d-b9e9-6179ab799471", "ref": "'+makerDeviceId+''+featureType+'"}'
-        LOGDEBUG("${strBody}")
-        def soutJson = new JsonSlurper().parseText(strBody)
-        String jsonBody = JsonOutput.toJson(soutJson)
-        LOGDEBUG("${jsonBody}")
-
-        params = [
-            uri: apiCreateEventsPath(),
-            contentType: "application/json",
-            body: jsonBody,
-            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
-            ]
-
-        try {
-            httpPost(params) { resp ->
-                if (resp.status == 200) {
-                    LOGDEBUG("${resp.data}")
-                    LOGTRACE("createEvent() OK")
-                    sendWebhookState(deviceId)
-                }
-            }
-        } catch (e) {
-            def error = e.toString()
-            LOGTRACE("Error in createEvent() call")
-            LOGERROR("${error}")
-            state.apiLastError = error
-        }
-        }
-
-
 
     def createEvent(deviceId, featureType, featureId, makerDeviceId) {
         LOGDEBUG("${featureType}, ${featureId}")
@@ -842,7 +695,6 @@ def sendWebhookState(deviceId) {
             state.apiLastError = error
         }
     }
-    //////////End - Testing secion/////////////////
 
     def defineResponseType(featureType) {
         //setting up a database of features for api response
