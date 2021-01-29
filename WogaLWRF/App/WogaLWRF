@@ -121,6 +121,7 @@
 		input name: "makerAppId", type: "number", title: "App Id from Maker", description: "Add the maker App Id", required: false
                 input "testapi", "bool", title: "${state.formatSettingRootStart}Check API${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
                 input "stateread", "bool", title: "${state.formatSettingRootStart}Batch state read from Lightwave${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
+		state.makerAppId = makerAppId
             }
             if (debugmode) { 
                 if (state.debugMode == false || state?.debugMode == null){
@@ -137,9 +138,8 @@
                 poll()
                 stateread = false
             }
-
+	
         }
-	state.makerAppId = makerAppId
     }    
 
     def pageCreateDevices() {
