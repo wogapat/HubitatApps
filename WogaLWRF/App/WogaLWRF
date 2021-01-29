@@ -9,7 +9,7 @@
     iconUrl: "",
     importUrl: "",
     iconX2Url: "",
-    name: "WogaLWRF",
+    name: "WogaLWRF - beta",
     description: "LightwaveRF Link Plus Smart Series Integration",
     namespace: "wogapat",
     oauth: false,
@@ -1222,7 +1222,7 @@ def sendWebhookState(deviceId) {
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "2.1.0"
+            state.version = "1.0.0"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
