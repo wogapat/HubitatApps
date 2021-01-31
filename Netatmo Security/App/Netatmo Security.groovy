@@ -1,7 +1,7 @@
 /*
  *  Netatmo Security
  *
- *  Copyright 2018 Nick Veenstra / 2021 Patrick Wogan
+ *  Copyright 2018 Nick Veenstra
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -26,7 +26,11 @@ private getVendorIcon()		{ "https://s3.amazonaws.com/smartapp-icons/Partner/neta
 private getScope()			{ "read_camera read_presence write_camera" }
 private getClientId()		{ settings.clientId }
 private getClientSecret()	{ settings.clientSecret }
-private getWebhookUrl()		{ getServerUrl()+ "/oauth/webhook?access_token=${state.accessToken}".encodeAsURL() }
+//private getClientId()		{ app.id }
+//private getClientSecret()	{ state.accessToken }
+private getWebhookUrl()		{ getServerUrl()+ "/oauth/webhook?access_token="+URLEncoder.encode("${state.accessToken}", "UTF-8") }
+private getAddWebhookPath() { "${getApiUrl()}/api/addwebhook?access_token="+URLEncoder.encode("${state.netatmoAccessToken}", "UTF-8")+"&url=${getWebhookUrl()}" }
+private getDropWebhookPath() { "${getApiUrl()}/api/dropwebhook?access_token="+URLEncoder.encode("${state.netatmoAccessToken}", "UTF-8") }
 private getCallbackUrl()	{ getServerUrl()+ "/oauth/callback?access_token=${state.accessToken}" }
 private getBuildRedirectUrl() { getServerUrl() + "/oauth/initialize?access_token=${state.accessToken}" }
 private getServerUrl() 		{ return getFullApiServerUrl() }
@@ -82,8 +86,8 @@ def authPage() {
 		return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
 			section("Enter Netatmo Application Details...") {
 				paragraph "you can get these details after creating a new application on https:\\developer.netatmo.com"
-				input(name: 'clientId', title: 'Client ID', type: 'text', required: true)
-				input(name: 'clientSecret', title: 'Client secret (click away from this box before pressing the button below)', type: 'text', required: true, submitOnChange: true )
+				input(name: 'clientId', title: 'Client ID', type: 'text', required: true, submitOnChange: false)
+				input(name: 'clientSecret', title: 'Client secret (click away from this box before pressing the button below)', type: 'text', required: true, submitOnChange: false )
 			}
 			section() {
 				paragraph "Tap below to log in to Netatmo and authorize Hubitat access."
