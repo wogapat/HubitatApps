@@ -14,7 +14,7 @@
  *
  */
 metadata {
-	definition (name: "Netatmo Presence", namespace: "copyCat73", author: "Nick Veenstra") {
+	definition (name: "Netatmo Presence", namespace: "copycat73", author: "Nick Veenstra") {
 		capability "Image Capture"
 		capability "Motion Sensor"
 		capability "Refresh"
