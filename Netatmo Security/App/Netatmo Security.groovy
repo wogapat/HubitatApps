@@ -54,9 +54,9 @@ preferences {
 }
 
 mappings {
-    	path("/oauth/initialize") {action: [GET: "oauthInitUrl"]}
+    path("/oauth/initialize") {action: [GET: "oauthInitUrl"]}
 	path("/oauth/callback") {action: [GET: "callback"]}
-    	path("/webhook") {action: [GET: "webhook", POST: "webhook"]}
+    path("/webhook") {action: [GET: "webhook", POST: "webhook"]}
 }
 
 
@@ -567,11 +567,10 @@ def webhook() {
 	def messageJSON = request.JSON
     log.debug "$messageJSON"
     log.debug "Webhook message: ${messageJSON.message}"
-    
     def children = getChildDevices()
-    
     def cameraID = messageJSON.camera_id
     def child = children?.find { it.name == cameraID }
+  
     if (!child) {
     	log.debug "Cant deliver event: no child device active for camera $cameraID"
     }
@@ -586,9 +585,13 @@ def webhook() {
                 child?.off()
                 break                
 			case 'person':
-                log.debug "Person detected (welcome)"
-                child?.seen()
-                break
+                  messageJSON.persons.each{ person ->
+                      personId = person
+                      child = children?.find { it.name == personId }
+                      log.debug "Person detected (welcome)"
+                      child?.seen()
+                  }
+                 break
             case 'human':
                 log.debug "Human detected (presence)"
                  child?.human()
