@@ -1,7 +1,7 @@
 /*
  *  Netatmo Security
  *
- *  Copyright 2018 Nick Veenstra / 2021 Patrick Wogan
+ *  Copyright 2018 Nick Veenstra
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -28,7 +28,7 @@ private getClientId()		{ settings.clientId }
 private getClientSecret()	{ settings.clientSecret }
 //private getClientId()		{ app.id }
 //private getClientSecret()	{ state.accessToken }
-private getWebhookUrl()		{ getServerUrl()+ "/oauth/webhook?access_token="+URLEncoder.encode("${state.accessToken}", "UTF-8") }
+private getWebhookUrl()		{ getServerUrl()+ "/webhook?access_token="+URLEncoder.encode("${state.accessToken}", "UTF-8") }
 private getAddWebhookPath() { "${getApiUrl()}/api/addwebhook?access_token="+URLEncoder.encode("${state.netatmoAccessToken}", "UTF-8")+"&url=${getWebhookUrl()}" }
 private getDropWebhookPath() { "${getApiUrl()}/api/dropwebhook?access_token="+URLEncoder.encode("${state.netatmoAccessToken}", "UTF-8") }
 private getCallbackUrl()	{ getServerUrl()+ "/oauth/callback?access_token=${state.accessToken}" }
@@ -54,7 +54,9 @@ preferences {
 }
 
 mappings {
+    	path("/oauth/initialize") {action: [GET: "oauthInitUrl"]}
 	path("/oauth/callback") {action: [GET: "callback"]}
+    	path("/webhook") {action: [GET: "webhook", POST: "webhook"]}
 }
 
 
