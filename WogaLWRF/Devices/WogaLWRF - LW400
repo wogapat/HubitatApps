@@ -21,27 +21,12 @@ metadata {
         
         command "identifyOn"
         command "identifyOff"
-        command "webhookevent"
 
 		attribute "identify", "String"
 		attribute "dimLevel", "number"
     }
 }
 
-def hookOptions = [:]
-				hookOptions << ["0" : "Disabled"] // 0x00
-				hookOptions << ["1" : "Enabled"] // 0x01
-preferences{
-// custom parameter
-				input name: "webhook", type: "enum", title: "Use webhooks", options: hookOptions, description: "Enable / Disable webhooks", required: false
-                input name: "makerDeviceId", type: "number", title: "Device Id from Maker", description: "Add the maker App device Id", required: false
-}
-
-
-def webhookevent() {
-    log.debug("webhookevent()")
-    poll()
-} 
 
 def poll() {
     parent?.childPoll(device.deviceNetworkId)
@@ -78,7 +63,6 @@ def identifyOff() {
 
 def updated() {
 	log.debug "updated()"
-    parent?.setChildWebhookSwitch(device.deviceNetworkId, 1, makerDeviceId)
 	initialize()
 }
 
