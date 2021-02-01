@@ -1,7 +1,7 @@
 /*
- *  Netatmo Person
+ *  Netatmo Presence
  *
-*  Copyright 2018 Nick Veenstra, 2021 Patrick Wogan
+ *  Copyright 2018 Nick Veenstra
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -13,61 +13,276 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
-
 metadata {
-	definition (name: "Netatmo Person", namespace: "copycat73", author: "Nick Veenstra") {
-		capability "Presence Sensor"
-		capability "Sensor"
+	definition (name: "Netatmo Presence", namespace: "copyCat73", author: "Nick Veenstra") {
+		capability "Image Capture"
+		capability "Motion Sensor"
+		capability "Refresh"
+        capability "Switch"
         
-        command "seen"
-		command "away"
-        command "setAway"
-        attribute "homeName", "string"
-	}
+        command "motion"
+        command "human"
+        command "vehicle"
+        command "animal"
+       	attribute "homeName", "string"
 
-	simulator {
-		// TBD
-	}
 
-	tiles {
-		standardTile("presence", "device.presence", width: 2, height: 2, canChangeBackground: true) {
-			state("present", labelIcon:"st.presence.tile.present", backgroundColor:"#00A0DC")
-			state("not present", labelIcon:"st.presence.tile.not-present", backgroundColor:"#ffffff")
-		}
-        standardTile("homeName", "device.homeName", width: 1, height: 1, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-            state "homeName", label: '${currentValue}', action: "", icon: "st.Home.home2", backgroundColor: "#FFFFFF"
-        }          
-       standardTile("setAway", "device.setAway", width: 1, height: 1, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-            state "setAway", label: 'Set away', action: "setAway", icon: "st.Home.home3", backgroundColor: "#FFFFFF"
-        }            
-		main "presence"
-		details (["presence", "homeName","setAway"])
 	}
 }
+    
+    preferences {
+    	section ("Snapshots") {
+            input("cameraIP", "text", title: "Local IP for camera", required: true, displayDuringSetup: false, defaultValue: "", description: "The address of the camera in your local network")  
+            input("cameraSecret", "text", title: "Access key for camera", required: true, displayDuringSetup: false, defaultValue: "", description: "Key to access the snapshot")
+            input("motionHumans", "bool", title: "Humans detected count as motion", required: true, displayDuringSetup: false)  
+            input("motionVehicles", "bool", title: "Vehicles detected count as motion", required: true, displayDuringSetup: false)  
+            input("motionAnimals", "bool", title: "Animals detected count as motion", required: true, displayDuringSetup: false)  
+			input("motionTimeout", "number", title: "Motion, human, vehicle and pet detection times out after how many seconds", required: true, displayDuringSetup: false)  
+			input("scheduledTake", "enum", title: "Take a snapshot every:",  options: ["disabled": "No snapshots", "every1Minute" : "Every minute", "every5Minutes" : "Every 5 minutes", "every10Minutes" : "Every 10 minutes", "every15Minutes" : "Every 15 minutes", "every30Minutes" : "Every 30 minutes", "every1Hour" : "Every hour", "Every3Hours" : "every 3 hours"],required: true, displayDuringSetup: false)  
+        }
+    }    
 
-def installed() {
-    log.debug "Netatmo person installed"
+
+def parse(String description) {
+	log.debug "Parsing '${description}'"
+
+	def map = stringToMap(description)
+
+    if (map.tempImageKey) {
+        try {
+            storeTemporaryImage(map.tempImageKey, getPictureName())
+        } catch (Exception e) {
+            log.error e
+        }
+    } else if (map.error) {
+        log.error "Error: ${map.error}"
+    }
 }
+
+private getPictureName() {
+    return java.util.UUID.randomUUID().toString().replaceAll('-', '')
+}
+
 
 def updated() {
-    log.debug "Netatmo person updated"    
+	log.debug "updated()"
+	initialize()
 }
+
+def uninstalled() {
+	log.debug "uninstalled()"
+	unschedule()
+}
+
+def initialize() {
+
+	unschedule()
+	if (scheduledTake) {
+    	switch (scheduledTake) {
+        	case "every1Minute":
+            	runEvery1Minute("take")
+                break
+        	case "every5Minutes":
+            	runEvery5Minutes("take")
+                break
+        	case "every10Minutes":
+            	runEvery10Minutes("take")
+                break
+        	case "every15Minutes":
+            	runEvery15Minutes("take")
+                break
+        	case "every30Minutes":
+            	runEvery30Minutes("take")
+                break
+        	case "every1Hour":
+            	runEvery1Hour("take")
+                break
+        	case "every3Hours":
+            	runEvery3Hours("take")
+                break
+			default:
+             	break
+		}
+	}
+}   
 
 def setHome(homeID,homeName) {
 	state.homeID = homeID
     sendEvent(name: "homeName", value: homeName)
 }
 
-def setAway() {
-	parent.setAway(state.homeID, device.name)
+def human() {
+
+	sendEvent(name: "human", value: "active")
+    if (motionHumans) {
+    	motion()
+    }
+    if (motionTimeout) {
+    	startTimer(motionTimeout, cancelHuman)
+    }
+    else {
+    	log.debug "Motion timeout has not been set in preferences, using 10 second default"
+    	startTimer(10, cancelHuman)
+	}
 }
 
-// handle commands
-def seen() {
-    sendEvent(name: "presence", value: "present")
+def vehicle() {
+
+	sendEvent(name: "vehicle", value: "active")
+    if (motionVehicles) {
+    	motion()
+    }
+    if (motionTimeout) {
+    	startTimer(motionTimeout, cancelVehicle)
+    }
+    else {
+    	log.debug "Motion timeout has not been set in preferences, using 10 second default"
+    	startTimer(10, cancelVehicle)
+	}
+}
+
+def animal() {
+
+	sendEvent(name: "animal", value: "active")
+    if (motionAnimals) {
+    	motion()
+    }    
+    if (motionTimeout) {
+    	startTimer(motionTimeout, cancelAnimal)
+    }
+    else {
+    	log.debug "Motion timeout has not been set in preferences, using 10 second default"
+    	startTimer(10, cancelAnimal)
+	}
+}
+
+def on() {
+
+	sendEvent(name: "switch", value: "on")
+} 
+
+def off() {
+
+	sendEvent(name: "switch", value: "off")
+}  
+
+def motion() {
+
+	sendEvent(name: "motion", value: "active")
+    
+    if (motionTimeout) {
+    	startTimer(motionTimeout, cancelMotion)
+    }
+    else {
+    	log.debug "Motion timeout has not been set in preferences, using 10 second default"
+    	startTimer(10, cancelMotion)
+	}
+}
+
+def cancelHuman() {
+
+	sendEvent(name: "human", value: "inactive")
+}
+
+def cancelVehicle() {
+
+	sendEvent(name: "vehicle", value: "inactive")
+}
+
+def cancelAnimal() {
+
+	sendEvent(name: "animal", value: "inactive")
+}
+
+def cancelMotion() {
+
+	sendEvent(name: "motion", value: "inactive")
+}
+
+def startTimer(seconds, function) {
+    def now = new Date()
+	def runTime = new Date(now.getTime() + (seconds * 1000))
+	runOnce(runTime, function) // runIn isn't reliable, use runOnce instead
+}
+
+def take() {
+	if (cameraSecret == null || cameraIP == null) {
+    	showAlert("Please set camera ip and secret in preferences first","Missing preferences","Secret + IP")
+        sendEvent(name: "take", value: "take")
+        return
+	}
+    log.debug("Taking Photo")
+	def port = 80
+    def path = "/${cameraSecret}/live/snapshot_720.jpg"
+    def iphex = convertIPtoHex(cameraIP).toUpperCase()
+    def porthex = convertPortToHex(port).toUpperCase()
+    log.debug "The device id before update is: $device.deviceNetworkId"
+    device.deviceNetworkId = "$iphex:$porthex" 
+ 	def hostAddress = "$cameraIP:$port"
+    log.debug "hostAddress set to $hostAddress"
+    def headers = [:] 
+    headers.put("HOST", hostAddress)
+	log.debug("Executing hubaction on " + hostAddress + path)
+
+
+    def hubAction = new hubitat.device.HubAction(
+        method: "GET",
+        path: path,
+        headers: headers,
+        device.deviceNetworkId,
+        [callback: cmdResponse]
+    )
+    hubAction.options = [outputMsgToS3:true]
+    //log.debug ("hubaction" + hubAction)
+    sendHubCommand(hubAction)
 }
 
 
-def away() {
-	 sendEvent(name: "presence", value: "not present")
+
+private String convertIPtoHex(ipAddress) { 
+    String hex = ipAddress.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()
+    return hex
+
+}
+
+private String convertPortToHex(port) {
+	String hexport = port.toString().format( '%04x', port.toInteger() )
+    return hexport
+}
+
+
+
+private getHostAddress() {
+	return "${ip}:${port}"
+}
+
+private showAlert(text,name,value) {
+    sendEvent(
+        descriptionText: text,
+        eventType: "ALERT",
+        name: name,
+        value: value,
+        displayed: true,
+    )
+}
+
+def putImageInS3(map) {
+	log.debug "firing s3"
+    def s3ObjectContent
+    try {
+        def imageBytes = getS3Object(map.bucket, map.key + ".jpg")
+        if(imageBytes)
+        {
+            s3ObjectContent = imageBytes.getObjectContent()
+            def bytes = new ByteArrayInputStream(s3ObjectContent.bytes)
+            storeImage(getPictureName(), bytes)
+        }
+    }
+    catch(Exception e) {
+        log.error e
+    }
+	finally {
+    //Explicitly close the stream
+		if (s3ObjectContent) { s3ObjectContent.close() }
+	}
 }
