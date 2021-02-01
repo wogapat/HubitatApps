@@ -9,17 +9,17 @@
     iconUrl: "",
     importUrl: "",
     iconX2Url: "",
-    name: "WogaLWRF - beta",
+    name: "WogaLWRF",
     description: "LightwaveRF Link Plus Smart Series Integration",
     namespace: "wogapat",
-    oauth: false,
+    oauth: true,
     singleInstance: true
-    ){
+    )
+    
+    {
     appSetting "apiBasicToken"
     appSetting "apiRefreshToken"
     }
-
-    //https://publicapi.lightwaverf.com/
 
     preferences {
         page(name: "mainPage")
@@ -28,23 +28,26 @@
         page(name: "pageAppState")
         page(name: "startUpTest")
         page(name: "pageCreateDevices")
-        page(name: "pageCreateNewDevices")
+        //page(name: "pageCreateNewDevices")
         page(name: "pageDiscoverAstructure")
         page(name: "pageDiscoveryStructures")
     }
 
-    private getApiUrl()           { "https://publicapi.lightwaverf.com/" }
+    private getApiUrl()           { "https://publicapi.lightwaverf.com" }
     private getVendorName()            { "lightwaveRF" }
     private getVendorAuthPath()      { "https://auth.lightwaverf.com/token" }
-    private getDiscoveryStructuresPath() {"https://publicapi.lightwaverf.com/v1/structures/"}
-    private getDiscoveryStructurePath() {"https://publicapi.lightwaverf.com/v1/structure/"}
-    private getFeatureReadPath() {"https://publicapi.lightwaverf.com/v1/feature/"}
-    private getFeatureBatchReadPath() {"https://publicapi.lightwaverf.com/v1/features/read"}
-    private getFeatureWritePath() {"https://publicapi.lightwaverf.com/v1/feature/"}
-    private apiEventsPath() {"https://publicapi.lightwaverf.com//v1/events/"}
-    private apiCreateEventsPath() {"https://publicapi.lightwaverf.com//v1/events"}
-
+    private getDiscoveryStructuresPath() { getApiUrl()+"/v1/structures/" }
+    private getDiscoveryStructurePath() { getApiUrl()+"/v1/structure/" }
+    private getFeatureReadPath() { getApiUrl()+"/v1/feature/"}
+    private getFeatureBatchReadPath() { getApiUrl()+"/v1/features/read"}
+    private getFeatureWritePath() { getApiUrl()+"/v1/feature/"}
+    private apiEventsPath() { getApiUrl()+"/v1/events/"}
+    private apiCreateEventsPath() { getApiUrl()+"/v1/events"}
+    private getWebhookUrl()		{ getServerUrl()+ "/webhook?access_token="+URLEncoder.encode("${state.accessToken}", "UTF-8") }
+    private getServerUrl() 		{ return getFullApiServerUrl() }
+    
     mappings {
+        path("/webhook") {action: [GET: "webhook", POST: "webhook"]}
     }
 
     def mainPage(){
@@ -66,7 +69,7 @@
                     href "pageAppState", title:"Status", description:"Tap to view the application status"
                     href "pageTestApi", title: "Test API", description: "Test the API"
                     href "pageIntegrationSettings", title:"Configure integration", description:"Tap to configure the lwRF API settings"
-                    href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
+                    //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
                 }
             }
             section("About"){
@@ -118,10 +121,11 @@
         dynamicPage(name: "pageTestApi", title: "Test Api", install: false, uninstall: false){
             section(""){
                 input "debugmode", "bool", title: "${state.formatSettingRootStart}Enable debug logging${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
-		input name: "makerAppId", type: "number", title: "App Id from Maker", description: "Add the maker App Id", required: false
                 input "testapi", "bool", title: "${state.formatSettingRootStart}Check API${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
                 input "stateread", "bool", title: "${state.formatSettingRootStart}Batch state read from Lightwave${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
-		state.makerAppId = makerAppId
+            }
+            section("Preferences") {
+        	    input "installWebhook", "bool", title: "Activate webhooks", description: "", required: true, submitOnChange: false
             }
             if (debugmode) { 
                 if (state.debugMode == false || state?.debugMode == null){
@@ -138,7 +142,6 @@
                 poll()
                 stateread = false
             }
-	
         }
     }    
 
@@ -157,11 +160,14 @@
                     CreateDevices += "Your devices could not be created. Check the application logs for information."
                 } else if (state.configChildrenExist == true) {
                     CreateDevices += "Your devices were created succesfully. Device attributes are polled and populated during initialisation.\n\n I hope you enjoy ${state.ExternalName}.\n\n"
-                    CreateDevices += "Please remember to make a donation if you would like to thank the developer.\n"
+                    CreateDevices += "Please remember to make a donation if you would like to thank the developer.\n\n"
                 }
                 paragraph(CreateDevices)
             }
             if (state.configChildrenExist == true) {
+                section("Preferences") {
+        	            input "installWebhook", "bool", title: "Activate webhooks", description: "", required: true
+                    }
                 section("<HR><HR><B><CENTER>Donations</CENTER></B>"){
                     def DonateOptions = ""
                     DonateOptions += "${state.ExternalName} is provided to the community for free.  It takes a lot of time to build and support any complex app.  If you wish to support the time and effort put into development you may submit a donation with one of the following:<BR>"
@@ -373,7 +379,15 @@
     }
 
     def getFeatureReadBatch() {
-        def soutJson = new JsonSlurper().parseText(state.strFeatureRead)
+        arrForRead = []
+
+        state.arrFeatureId.each { featureId ->
+        String strFeatureId = '{"featureId": "'+featureId+'"}'
+        arrForRead.push(strFeatureId)
+        }
+        strFeatureRead = '{"features": '+arrForRead+'}'
+
+        def soutJson = new JsonSlurper().parseText(strFeatureRead)
         String jsonFeatureRead = JsonOutput.toJson(soutJson)
 
         params = [
@@ -406,12 +420,11 @@
     }
 
     def createAppData(data) {
-        arrFeatureId = []
+        state.arrFeatureId = []
         deviceList = [:]
         state.deviceDetail = [:]
         state.deviceState = [:]
         state.mapFeatureToDevice = [:]
-        state.strFeatureRead = [:]
 
         data.devices.each { deviceData ->
             //pauseExecution(3)
@@ -476,7 +489,9 @@
                         default:
                             state.deviceDetail[key].features << ["${featureType}": ["featureId": "${featureId}", "writable": "${featureWritable}"]]
                     }
-                             
+
+
+                                
                     //get the response type for correct event sending
                     responseType = defineResponseType(featureType)
 
@@ -485,20 +500,22 @@
                     state.mapFeatureToDevice[featureId] = ["deviceId": "${key}", "type": featureType, "responseType": responseType, "name": deviceName]
 
                     //Setting up map for Bulk feature read
-                    String strFeatureId = '{"featureId": "'+featureId+'"}'
-                    arrFeatureId.push(strFeatureId)
+                    state.arrFeatureId.push(featureId)
+ 
                                 
                 }
             }
         }
         //add webhook value
         
+
         //create feature states for bulk read of features
-        state.strFeatureRead = '{"features": '+arrFeatureId+'}'
+      
         state.finalDeviceList = deviceList.sort() //{ it.value.toLowerCase() }
         state.configGetAstructure = true
 
         LOGDEBUG("created App Data")
+
     }
 
     def getAstructure(){
@@ -514,11 +531,13 @@
             httpGet(params) { resp ->
                 if (resp.data) {
                     data = resp.data
-                
+ 
+
+                    
                     createAppData(data)
 
- 	            LOGTRACE("getAstructure() OK")
-            	}
+                LOGTRACE("getAstructure() OK")
+            }
             }
         } catch (e) {
             def error = e.toString()
@@ -626,53 +645,6 @@
             LOGTRACE("deleteEvents() OK")
         }
     }
-
-def sendWebhookState(deviceId) {
-	properties = ["name": "webhooks", "value": "true"]
-        
-	try {
-		sendEvent(deviceId, properties)
-		LOGTRACE("Set ${deviceId} webhooks to true")
-		LOGTRACE("Webhooks created for ${deviceId}}")
-                            
-	} catch (e) {
-		def error = e.toString()
-		LOGTRACE("setChildWebhookSwitch()")
-		LOGERROR("${error}")
-	}
-}
-
-    def createEvent(deviceId, featureType, featureId, makerDeviceId) {
-        LOGDEBUG("${featureType}, ${featureId}")
-        strBody = '{"events": [{"type": "feature", "id": "'+featureId+'"}],"url": "https://cloud.hubitat.com/api/43a51a00-67c7-4d5a-8d1a-282b2d12dc04/apps/'+state.makerAppId+'/devices/'+makerDeviceId+'/webhookevent?access_token=92799833-b974-420d-b9e9-6179ab799471", "ref": "'+makerDeviceId+''+featureType+'"}'
-        LOGDEBUG("${strBody}")
-        def soutJson = new JsonSlurper().parseText(strBody)
-        String jsonBody = JsonOutput.toJson(soutJson)
-        LOGDEBUG("${jsonBody}")
-
-        params = [
-            uri: apiCreateEventsPath(),
-            contentType: "application/json",
-            body: jsonBody,
-            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
-            ]
-
-        try {
-            httpPost(params) { resp ->
-                if (resp.status == 200) {
-                    LOGDEBUG("${resp.data}")
-                    LOGTRACE("createEvent() OK")
-                    state.deviceDetail["${deviceId}"].features["${featureType}"] << ["webhookId": resp.data.id] 
-                    sendWebhookState(deviceId)
-                }
-            }
-        } catch (e) {
-            def error = e.toString()
-            LOGTRACE("Error in createEvent() call")
-            LOGERROR("${error}")
-            state.apiLastError = error
-        }
-        }
 
     def getEvents() {
         params = [
@@ -857,7 +829,6 @@ def sendWebhookState(deviceId) {
                 LOGTRACE("Child created: ${label}")
                 properties = ["name": "webhooks", "value": "false"]
                     try {
-                        LOGDEBUG("Got here")
                         sendEvent(dni, properties)
                     
                     } catch (e) {
@@ -957,57 +928,65 @@ def sendWebhookState(deviceId) {
             LOGERROR("${deviceName} mappings can't be found.")
         }
     }
+
+    def addWebhook() {
+        if (!state.accessToken) {
+            createAccessToken() // create our own OAUTH access token to use in webhook url
+        }
+        arrEvents = []
+        
+        state.arrFeatureId.each { featureId ->
+            arrEvents.push('{"type": "feature", "id": "'+featureId+'"}')
+
+
+         }
+       
+        strBody = '{"events": '+arrEvents+',"url":"'+getWebhookUrl()+'","ref":"wogalwrf"}'
+
+        def soutJson = new JsonSlurper().parseText(strBody)
+        String jsonBody = JsonOutput.toJson(soutJson)
+        LOGDEBUG("${jsonBody}")
+
+        params = [
+            uri: apiCreateEventsPath(),
+            contentType: "application/json",
+            body: jsonBody,
+            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
+            ]
+
+        try {
+            httpPost(params) { resp ->
+                if (resp.status == 200) {
+                    LOGDEBUG("${resp.data}")
+                    LOGTRACE("addWebhook() OK")
+                }
+            }
+        } catch (e) {
+            def error = e.toString()
+            LOGTRACE("Error in addWebhook() call")
+            LOGERROR("${error}")
+            state.apiLastError = error
+        }
+    }
     
-    def getUninstallDeleteChildren(children) {}
+   private removeChildDevices(delete) {
+	    LOGDEBUG("In removeChildDevices")
+	    LOGDEBUG("deleting ${delete.size()} devices")
+	    delete.each {
+		    deleteChildDevice(it.deviceNetworkId)
+	    }
+    }
 
     def getChildren() {
         children = getChildDevices()
 
-    LOGDEBUG("children: ${children}")
+        LOGDEBUG("children: ${children}")
 
         if (children) {
             state.configChildrenExist = true
         } else {
             state.configChildrenExist = false
         }  
-    }
-
-    def setChildWebhookSwitch(deviceNetworkId, value, makerDeviceId) {
-        switch (value) {
-            case 0:
-                events = state.deviceState["${device.deviceNetworkId}"].events
-                deleteEvents(events)
-
-                    if (result == "ok") {
-                        properties = ["name": "webhooks", "value": "false"]
-                        try {
-                            sendEvent(deviceNetworkId, properties)
-                            LOGTRACE("Set ${deviceNetworkId} webhooks to false")
-                            LOGTRACE("Webhooks deleted for ${finalDeviceList[${deviceNetworkId}]}")
-                        } catch (e) {
-                            def error = e.toString()
-                            LOGTRACE("setChildWebhookSwitch()")
-                            LOGERROR("${error}")
-                            return
-                        }
-                    }
-                break
-            case 1:
-                state.eventId = ""
-                state.deviceDetail["${deviceNetworkId}"].features.each { featureType, feature ->
-                    LOGDEBUG("${feature}")
-                    featureId = feature.featureId
-                    pauseExecution(2000)
-                    state.deviceState["${deviceNetworkId}"].events = state.eventId
-                    state.eventId = ""
-                    createEvent(deviceNetworkId, featureType, featureId, makerDeviceId)
-               }
-                break
-            
-            LOGDEBUG(arrFeatures, makerDeviceId)
-            default:
-            return
-        }         
     }
 
     def childPoll(deviceId) {
@@ -1037,6 +1016,18 @@ def sendWebhookState(deviceId) {
     def setChildIdentify(deviceNetworkId, value) {
         getFeatureWrite(deviceNetworkId, value, "identify")
     }
+
+    def webhook(){
+
+        def jsonSlurper = new groovy.json.JsonSlurper()
+	    def messageJSON = request.JSON
+        LOGDEBUG("$messageJSON")
+        triggerId = messageJSON.triggerEvent.id
+        value = messageJSON.payload.value
+        LOGTRACE("Webhook trigger: ${triggerId} ${value}")
+        getSendChildEvent(triggerId, value)
+    }
+
 
     def getHubType(){
         if (location.hubs[0].id.toString().length() > 5) { return "SmartThings" } else { return "Hubitat" }
@@ -1147,9 +1138,24 @@ def sendWebhookState(deviceId) {
     //End installed()
     }
 
+    def updated() {
+        LOGDEBUG("updated()")
+        initialize()
+    }
+
     def initialize() {
+        LOGDEBUG("initialize()")
+        if (installWebhook && !state.webhookInstalled) {
+		    addWebhook()
+            state.webhookInstalled = true
+	    
+        } else if (!installWebhook && state.webhookInstalled) {
+    	    deleteEvents(getEvents())
+            state.webhookInstalled = false
+        }
+        LOGDEBUG("webhook: ${state.webhookInstalled}")
         poll()
-        deleteEvents(getEvents())
+
         if (!(checkConfig())) { 
             def msg = ""
             msg = "ERROR: App not properly configured!  Can't start.\n"
@@ -1166,9 +1172,15 @@ def sendWebhookState(deviceId) {
     }
 
     def uninstalled() {
-        deleteEvents(getEvents())
+        if (state.webhookInstalled) {
+    	    deleteEvents(getEvents())
+            state.webhookInstalled = false
+        }
+        
+	    removeChildDevices(getChildDevices())
+        unschedule()
+
 	    log.debug "uninstalled()"
-    	unschedule()
     }
 
     def version(){
@@ -1222,7 +1234,7 @@ def sendWebhookState(deviceId) {
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.0.0"
+            state.version = "1.1.0"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
