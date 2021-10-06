@@ -41,7 +41,7 @@ def off() {
 }
 
 def setLevel(nextLevel, duration) {
-	parent?.setChildSetLevel(device.deviceNetworkId, 0)
+	parent?.setChildSetLevel(device.deviceNetworkId, nextLevel)
 }
 	
 def lock() {
