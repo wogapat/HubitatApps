@@ -40,7 +40,7 @@ def off() {
 	parent?.setChildSwitch(device.deviceNetworkId, 0)
 }
 
-def setLevel(nextLevel, duration) {
+def setLevel(nextLevel, duration=null) {
 	parent?.setChildSetLevel(device.deviceNetworkId, nextLevel)
 }
 	
