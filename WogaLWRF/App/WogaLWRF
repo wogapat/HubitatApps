@@ -1236,7 +1236,7 @@
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.1.1"
+            state.version = "1.1.2"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
