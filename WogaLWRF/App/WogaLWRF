@@ -68,6 +68,7 @@
                 } else {
                     href "pageAppState", title:"Status", description:"Tap to view the application status"
                     href "pageTestApi", title: "Test API", description: "Test the API"
+                    href "pageIntegrationSettings", title:"Configure", description:"Tap to configure the lwRF API settings"
                     //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
                 }
             }
@@ -100,6 +101,7 @@
             def AboutState = ""
                 AboutState += "<B>Lightwave session</B>\n"
                 AboutState += "Refresh Token: ${state.apiRefreshToken}\n"
+                AboutState += "API Access Token: ${state.apiAccessToken}\n"
                 AboutState += "Active Session: ${state.session}\n\n"
                 AboutState += "<B>Device details</B>\n"
                 state.finalDeviceList.each { dev ->
