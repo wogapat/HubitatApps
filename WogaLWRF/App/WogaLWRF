@@ -288,7 +288,6 @@
     }
 
     def pageIntegrationSettings() {
-        unsubscribe()
         def myNextPage = ""
         dynamicPage(name: "pageIntegrationSettings", title: "Configure settings", nextPage: "startUpTest", install: false, uninstall: false){
             section("${state.formatSettingRootStart}API Client Token${state.formatSettingRootEnd}"){
@@ -1154,10 +1153,15 @@
         initialize()
     }
 
+    def subscribe(){
+        subscribe(location, "systemStart", handleReboot)
+    }
+    def handleReboot(evt) {
+       initialize()
+    }
+
     def initialize() {
         LOGDEBUG("initialize()")
-        poll()
- 
         if (!(checkConfig())) { 
             def msg = ""
             msg = "ERROR: App not properly configured!  Can't start.\n"
@@ -1167,11 +1171,15 @@
             state.polledDevices = ""
             return //App not properly configured, exit, don't subscribe
         }
+        subscribe()
+        refreshSession()
+        poll()
         version()
         LOGTRACE("Initialized (Parent Version: ${state.version})")
         if (state.hubType == "SmartThings") {sendNotificationEvent("${app.label.replace(" ","").toUpperCase()}: Settings activated")}
     //End initialize()
     }
+
 
     def uninstalled() {
         if (state.webhookInstalled) {
@@ -1233,10 +1241,9 @@
         section{paragraph "<BR>${state.ExternalName} - Version: $state.version <BR><font face='Lucida Handwriting'></font>"}
     }
 
-
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.1.2"
+            state.version = "1.1.3"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
