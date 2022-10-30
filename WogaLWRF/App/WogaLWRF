@@ -31,6 +31,12 @@
         //page(name: "pageCreateNewDevices")
         page(name: "pageDiscoverAstructure")
         page(name: "pageDiscoveryStructures")
+        page(name: "pageGroupDeviceAdmin")
+        page(name: "pageEnterAutomationDevice")
+        page(name: "pageCreateAutomationDevice")
+        page(name: "pageAdminAutomationDevice")
+        page(name: "pageAutomationDeviceCreated")
+        page(name: "pageTestBatchWrite")
     }
 
     private getApiUrl()           { "https://publicapi.lightwaverf.com" }
@@ -41,6 +47,7 @@
     private getFeatureReadPath() { getApiUrl()+"/v1/feature/"}
     private getFeatureBatchReadPath() { getApiUrl()+"/v1/features/read"}
     private getFeatureWritePath() { getApiUrl()+"/v1/feature/"}
+    private getFeatureBatchWritePath() {getApiUrl()+"/v1/features/write"}
     private apiEventsPath() { getApiUrl()+"/v1/events/"}
     private apiCreateEventsPath() { getApiUrl()+"/v1/events"}
     private getWebhookUrl()		{ getServerUrl()+ "/webhook?access_token="+URLEncoder.encode("${state.accessToken}", "UTF-8") }
@@ -66,9 +73,11 @@
                 if (!state.configOk == true) { 
                     href "pageIntegrationSettings", title:"Configure", description:"Tap to configure the lwRF API settings"
                 } else {
+                    settingsRemove()
                     href "pageAppState", title:"Status", description:"Tap to view the application status"
                     href "pageTestApi", title: "Test API", description: "Test the API"
                     href "pageIntegrationSettings", title:"Configure", description:"Tap to configure the lwRF API settings"
+                    href "pageGroupDeviceAdmin", title: "Automation Devices", description: "Add, change or delete devices for routines"
                     //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
                 }
             }
@@ -291,10 +300,16 @@
         def myNextPage = ""
         dynamicPage(name: "pageIntegrationSettings", title: "Configure settings", nextPage: "startUpTest", install: false, uninstall: false){
             section("${state.formatSettingRootStart}API Client Token${state.formatSettingRootEnd}"){
-                input "apiBasicToken", "string", title: "Enter the API basic token", multiple: false, required: true, submitOnChange: false
+                input "apiBasicToken", "string", title: "Enter the API basic token", multiple: false, required: true, submitOnChange: true
+            }
+            if (state.configOk == true) {
+                app.updateSetting("apiRefreshToken", [value: "${state.apiRefreshToken}", type:"string"])
+            }
+            else {
+                app.updateSetting("apiRefreshToken", [value: "", type:"string"])
             }
             section ("${state.formatSettingRootStart}Refresh Token:${state.formatSettingRootEnd}"){
-                input "apiRefreshToken", "string", title: "Enter the API refresh token:", multiple: false, required: true, submitOnChange: false
+                input "apiRefreshToken", "string", title: "Enter the API refresh token:", multiple: false, required: true, submitOnChange: true
             }
             section(){
                 input "debugmode", "bool", title: "${state.formatSettingRootStart}Enable debug logging${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
@@ -310,6 +325,211 @@
             state.apiRefreshToken = apiRefreshToken
         }
     }
+
+    def pageGroupDeviceAdmin() {
+        dynamicPage(name: "pageGroupDeviceAdmin", title: "Group Device Administration", install: false, uninstall: false) {
+            section(){
+                LOGDEBUG("install state=${app.getInstallationState()}.")
+                def mydebug_pollnow = ""
+                if (!state.configGroupDevices) { 
+                    href "pageEnterAutomationDevice", title: "Create an Automation Device", description: "Group device features into a single device for routines"
+                } else {
+                    href "pageEnterAutomationDevice", title: "Create an Automation Device", description: "Group device into a single device for routines"
+                    href "pageAdminAutomationDevice", title: "Administer Automation Devices", description: "Change or delete automation devices"
+                    //href "pageTestBatchWrite", title: "Test Batch Write", description: "Test Batch Feature Write"
+                }
+            }       
+        }
+    }
+
+    def pageEnterAutomationDevice() { 
+        dynamicPage(name: "pageEnterAutomationDevice", title: "Enter Group Details", nextPage: "pageCreateAutomationDevice", install: false, uninstall: false){
+            section("${state.formatSettingRootStart}Automation Name${state.formatSettingRootEnd}"){
+                input "automationName", "string", title: "Enter the group name", multiple: false, required: true, submitOnChange: true
+            }
+            section ("${state.formatSettingRootStart}Available Switches:${state.formatSettingRootEnd}"){
+                state.finalDeviceList.each { key, value ->
+                    deviceId = key
+                    //LOGDEBUG("deviceId: ${deviceId}")
+                    name = value
+                    //LOGDEBUG("name: ${name}")
+
+                    switchPresent = state.deviceDetail["${key}"].features.switch
+                    dimPresent = state.deviceDetail["${key}"].features.dimLevel
+                    
+                    //LOGDEBUG("deviceType: ${deviceType}")
+                     if (switchPresent)  {
+                        input "${key}", "bool", title: "${name}", defaultValue: false, submitOnChange: true
+                           
+                    }
+                }
+            }
+        }
+    }
+
+
+    def pageCreateAutomationDevice() {
+        state.availGroupFeatures = []
+        def switchOptions = [:]
+            switchOptions << ["9": "do not include"]
+            switchOptions << ["1": "on"]
+            switchOptions << ["0": "off"]
+
+        def dimOptions = [:]
+            dimOptions << ["9": "do not include"]
+            dimOptions << ["10": "10"]
+            dimOptions << ["20": "20"]
+            dimOptions << ["30": "30"]
+            dimOptions << ["40": "40"]
+            dimOptions << ["50": "50"]
+            dimOptions << ["60": "60"]
+            dimOptions << ["70": "70"]
+            dimOptions << ["80": "80"]
+            dimOptions << ["90": "90"]
+            dimOptions << ["100": "100"]
+
+        dynamicPage(name: "pageCreateAutomationDevice", title: "Enter Group Details", nextPage: "pageAutomationDeviceCreated", install: false, uninstall: false){
+            section() {
+                // def DeviceCreate = ""
+                // DeviceCreate += "Done.\n\n"
+                // paragraph(DeviceCreate)
+                state.finalDeviceList.each { key, value ->
+                    deviceId = key
+                    //LOGDEBUG("deviceId: ${deviceId}")
+                    name = value
+                    if (settings["${key}"] == true) {
+                        if (state.deviceDetail["${key}"].features.switch) {
+                            switchFeatureId = state.deviceDetail["${key}"].features.switch.featureId
+                            input "${switchFeatureId}", "enum", title: "Select ${name} switch value", options: switchOptions, required: true
+                            state.availGroupFeatures.push(switchFeatureId)
+                        }
+
+                        if (state.deviceDetail["${key}"].features.dimLevel) {
+                            dimLevelFeatureId = state.deviceDetail["${key}"].features.dimLevel.featureId
+                            input "${dimLevelFeatureId}", "enum", title: "Select ${name} dim value", options: dimOptions, required: true
+                            state.availGroupFeatures.push(dimLevelFeatureId)
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    def groupDeviceCreate() {
+        state["automation_${settings.automationName}"] = [:]
+        state["automation_${settings.automationName}"].features = []
+
+        if (!state.configGroupDevices) {
+            state.configGroupDevices = []
+        }
+        state.configGroupDevices.push(settings.automationName)
+
+        state.availGroupFeatures.each { value ->
+            settingValue = settings["${value}"]
+
+            switch(settingValue) {
+                case "9":
+                    finValue = "do not include"
+                    break
+                default:
+                    finValue = settingValue.toInteger()
+            }
+
+            if (finValue != "do not include") {
+                state["automation_${settings.automationName}"].features.push('{"featureId": "'+value+'", "value": '+finValue+'}')
+            }
+        }
+    }
+
+    def pageAutomationDeviceCreated() {
+        groupDeviceCreate()
+        dynamicPage(name: "pageAutomationDeviceCreated", title: "Automation Device Created", install: true, uninstall: false){
+            section() {
+                def DeviceCreate = ""
+                DeviceCreate += "Automation device ${settings.automationName} created.\n\n"
+                paragraph(DeviceCreate)
+            }
+        }
+    }
+
+
+    def pageAdminAutomationDevice() {
+        dynamicPage(name: "pageAdminAutomationDevice", title: "Administer Devices", install: false, uninstall: false){
+            section() {
+                state.configGroupDevices.each { value ->
+                    input "${value}", "button", title: "Delete ${value}", submitOnChange: false
+                }
+            }
+        }
+
+
+    }
+
+    def pageTestBatchWrite() {
+        dynamicPage(name: "pageTestBatchWrite", title: "Test Device", install: false, uninstall: false){
+            section() {
+                state.configGroupDevices.each { value ->
+                    input "testbatch", "button", title: "Test ${value}", submitOnChange: false
+                }
+            }
+        }
+
+
+    }
+
+
+    void appButtonHandler(btn) {
+        // if (btn == "testbatch") {
+        //     features = state['automation_group 3'].features
+        //     getFeatureBatchWrite(features)
+        // }
+        // else {
+            state.configGroupDevices.remove(btn)
+            setting = 'automation_'+"${btn}"
+            LOGDEBUG ("${setting}")
+            state.remove(setting)
+        //}
+
+        LOGTRACE "$btn handled"
+
+    }
+
+            //   AboutState += "<B>Device details</B>\n"
+            //     state.finalDeviceList.each { dev ->
+            //     devId = dev.getKey()
+            //     devName = dev.getValue()
+            //     AboutState += "<B>${devName}</B>\n"
+            //     state.deviceDetail[devId].each {
+            //     AboutState += "${it}\n"
+            //     }
+            //     AboutState += "\n"
+
+    def settingsRemove() {
+        state.remove("availGroupFeatures")
+        state.finalDeviceList.each { key, value ->
+                app.removeSetting("${key}")
+                switchPresent = state.deviceDetail["${key}"].features.switch
+                dimPresent = state.deviceDetail["${key}"].features.dimLevel
+                if (switchPresent) {
+                    setting = switchPresent.featureId
+                    app.removeSetting("${setting}")
+                }
+                if (dimPresent) {
+                    setting = dimPresent.featureId
+                    app.removeSetting("${setting}")
+                }
+            }
+
+        if (automationName != "") {
+            state.finalDeviceList.each { key, value ->
+                app.removeSetting("${automationName}_${key}")
+            }
+            app.updateSetting("automationName", [value:"", type:"string"])
+        }
+    }
+
 
     def getFeatureWrite(featureSetId, value, attribute) {
         String strBody = '{"value": '+value+'}'
@@ -379,6 +599,39 @@
             state.apiLastError = error
         }
     }
+
+    def getFeatureBatchWrite(features) {
+        strFeatures = '{"features": '+features+'}'
+        def soutJson = new JsonSlurper().parseText(strFeatures)
+        String jsonFeatures = JsonOutput.toJson(soutJson)
+        LOGDEBUG("${jsonFeatures}")
+
+        params = [
+            uri: getFeatureBatchWritePath(),
+            contentType: "application/json",
+            body: jsonFeatures,
+            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
+            ]
+
+        try {
+            httpPost(params) { resp ->
+                if (resp.status == 200) {
+                    LOGDEBUG("${resp.data}")
+
+                    //send device events to update attributes       
+                    //getSendChildEvent(featureId, value)
+        
+                    LOGDEBUG("getFeatureBatchWrite() OK")
+                }
+            }
+        } catch (e) {
+            def error = e.toString()
+            LOGTRACE("Error in getFeatureBatchWrite() call")
+            LOGERROR("${error}")
+            state.apiLastError = error
+        }
+    }
+
 
     def getFeatureReadBatch() {
         arrForRead = []
@@ -596,7 +849,7 @@
                     data = resp.data
                     LOGTRACE("getAccessToken() OK")
                     state.apiRefreshToken = data.get("refresh_token")
-                    settings.apiRefreshToken = state.apiRefreshToken
+                    app.updateSetting("apiRefreshToken", [value: "${state.apiRefreshToken}", type:"string"])
                     state.apiAccessToken = data.get("access_token")
                     apiSessionExpiresIn = data.get("expires_in").toInteger()
                     
@@ -843,6 +1096,35 @@
         }
     }
 
+    def createGroupDevice(name, arrFinalPickList ) { 
+        deviceFile = "${state.ExternalName} - Lightwave Switch"
+        dni = name
+        label = name
+
+        def hub = location.hubs[0]
+        try {
+            def existingDevice = getChildDevice(dni)
+            if(!existingDevice) {
+                def childDevice = addChildDevice("wogapat", deviceFile, dni, [name: name, label: label])
+                LOGTRACE("Child created: ${label}")
+                
+                if (installWebhook) {
+                    addWebhook(dni, label)
+                }
+
+                state.configChildrenExist = true
+            } else {
+                LOGERROR("Device ${dni} already exists")
+            }
+        } catch (e) {
+            LOGERROR("Error creating device: ${e}")
+        }
+    }
+
+
+
+
+
     def getSendChildEvent(featureId, value) {
         LOGDEBUG("featureId: ${featureId}")
         //map the feature Id to the device to be updated
@@ -1079,7 +1361,7 @@
         LOGTRACE("Debug timer has expired. Disabling debugging")
         state.debugMode = false
         unschedule("disableDebug")
-        settings.debugmode = false
+        app.updateSetting("debugmode", [value: false, type:"bool"])
     }
 
     def refreshSession() {
@@ -1157,7 +1439,7 @@
         subscribe(location, "systemStart", handleReboot)
     }
     def handleReboot(evt) {
-       initialize()
+       myRunIn(600, initialize)
     }
 
     def initialize() {
@@ -1172,7 +1454,7 @@
             return //App not properly configured, exit, don't subscribe
         }
         subscribe()
-        refreshSession()
+        getAccessToken()
         poll()
         version()
         LOGTRACE("Initialized (Parent Version: ${state.version})")
@@ -1243,7 +1525,7 @@
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.1.3"
+            state.version = "1.1.2"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
