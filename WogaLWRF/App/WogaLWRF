@@ -328,7 +328,7 @@
 
     def pageAutoDeviceAdmin() {
         settingsRemove()
-        dynamicPage(name: "pageAutoDeviceAdmin", title: "Group Device Administration", install: false, uninstall: false) {
+        dynamicPage(name: "pageAutoDeviceAdmin", title: "Group Device Administration", install: true, uninstall: false) {
             section(){
                 LOGDEBUG("install state=${app.getInstallationState()}.")
                 def mydebug_pollnow = ""
@@ -1554,7 +1554,7 @@
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.2.1"
+            state.version = "1.2.2"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
