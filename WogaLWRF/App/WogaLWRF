@@ -31,7 +31,7 @@
         //page(name: "pageCreateNewDevices")
         page(name: "pageDiscoverAstructure")
         page(name: "pageDiscoveryStructures")
-        page(name: "pageGroupDeviceAdmin")
+        page(name: "pageAutoDeviceAdmin")
         page(name: "pageEnterAutomationDevice")
         page(name: "pageCreateAutomationDevice")
         page(name: "pageAdminAutomationDevice")
@@ -77,7 +77,7 @@
                     href "pageAppState", title:"Status", description:"Tap to view the application status"
                     href "pageTestApi", title: "Test API", description: "Test the API"
                     href "pageIntegrationSettings", title:"Configure", description:"Tap to configure the lwRF API settings"
-                    href "pageGroupDeviceAdmin", title: "Automation Devices", description: "Add, change or delete devices for routines"
+                    href "pageAutoDeviceAdmin", title: "Automation Devices", description: "Add, change or delete devices for routines"
                     //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
                 }
             }
@@ -326,8 +326,9 @@
         }
     }
 
-    def pageGroupDeviceAdmin() {
-        dynamicPage(name: "pageGroupDeviceAdmin", title: "Group Device Administration", install: false, uninstall: false) {
+    def pageAutoDeviceAdmin() {
+        settingsRemove()
+        dynamicPage(name: "pageAutoDeviceAdmin", title: "Group Device Administration", install: false, uninstall: false) {
             section(){
                 LOGDEBUG("install state=${app.getInstallationState()}.")
                 def mydebug_pollnow = ""
@@ -343,29 +344,59 @@
     }
 
     def pageEnterAutomationDevice() { 
-        dynamicPage(name: "pageEnterAutomationDevice", title: "Enter Group Details", nextPage: "pageCreateAutomationDevice", install: false, uninstall: false){
-            section("${state.formatSettingRootStart}Automation Name${state.formatSettingRootEnd}"){
-                input "automationName", "string", title: "Enter the group name", multiple: false, required: true, submitOnChange: true
-            }
-            section ("${state.formatSettingRootStart}Available Switches:${state.formatSettingRootEnd}"){
-                state.finalDeviceList.each { key, value ->
-                    deviceId = key
-                    //LOGDEBUG("deviceId: ${deviceId}")
-                    name = value
-                    //LOGDEBUG("name: ${name}")
+        def existingDevice = state["automation_${automationName}"]
+        if (!existingDevice) {
+            dynPageProperties = [
+                name:       "pageEnterAutomationDevice",
+                title:      "Enter The Automation Device Details",
+                nextPage:   "pageCreateAutomationDevice",
+                install:    false,
+                uninstall:  false
+            ]
+            return dynamicPage(dynPageProperties) {
+                section("${state.formatSettingRootStart}Automation Name${state.formatSettingRootEnd}"){
+                    input "automationName", "string", title: "Enter the automation device name", multiple: false, required: true, submitOnChange: true
+                }
 
-                    switchPresent = state.deviceDetail["${key}"].features.switch
-                    dimPresent = state.deviceDetail["${key}"].features.dimLevel
+                section ("${state.formatSettingRootStart}Available Switches:${state.formatSettingRootEnd}"){
+                    state.finalDeviceList.each { key, value ->
+                        deviceId = key
+                        //LOGDEBUG("deviceId: ${deviceId}")
+                        name = value
+                        //LOGDEBUG("name: ${name}")
+
+                        switchPresent = state.deviceDetail["${key}"].features.switch
+                        dimPresent = state.deviceDetail["${key}"].features.dimLevel
                     
-                    //LOGDEBUG("deviceType: ${deviceType}")
-                     if (switchPresent)  {
-                        input "${key}", "bool", title: "${name}", defaultValue: false, submitOnChange: true
-                           
+                        //LOGDEBUG("deviceType: ${deviceType}")
+                        if (switchPresent)  {
+                            input "${key}", "bool", title: "${name}", defaultValue: false, submitOnChange: true  
+                        }
                     }
+                }
+            }
+        } 
+        else {
+            dynPageProperties = [
+                name:       "pageEnterAutomationDevice",
+                title:      "Change The Automation Device Details",
+                nextPage:   "pageAutoDeviceAdmin",
+                install:    false,
+                uninstall:  false
+            ]
+            return dynamicPage(dynPageProperties) {
+                section() {
+                    def ErrorMessage = ""
+                    ErrorMessage += "Automation device exists - Delete or choose another name"
+                    paragraph(ErrorMessage)
+                }
+                section("${state.formatSettingRootStart}Automation Name${state.formatSettingRootEnd}"){
+                    input "automationName", "string", title: "Change the automation device name", multiple: false, required: true, submitOnChange: true
                 }
             }
         }
     }
+
 
 
     def pageCreateAutomationDevice() {
@@ -417,7 +448,7 @@
     }
 
 
-    def groupDeviceCreate() {
+    def autoDeviceCreate() {
         state["automation_${settings.automationName}"] = [:]
         state["automation_${settings.automationName}"].features = []
 
@@ -444,7 +475,8 @@
     }
 
     def pageAutomationDeviceCreated() {
-        groupDeviceCreate()
+        autoDeviceCreate()
+        createAutomationDevice("${settings.automationName}")
         dynamicPage(name: "pageAutomationDeviceCreated", title: "Automation Device Created", install: true, uninstall: false){
             section() {
                 def DeviceCreate = ""
@@ -456,7 +488,7 @@
 
 
     def pageAdminAutomationDevice() {
-        dynamicPage(name: "pageAdminAutomationDevice", title: "Administer Devices", install: false, uninstall: false){
+        dynamicPage(name: "pageAdminAutomationDevice", title: "Administer Devices", nextPage: "pageAutoDeviceAdmin", install: false, uninstall: false){
             section() {
                 state.configGroupDevices.each { value ->
                     input "${value}", "button", title: "Delete ${value}", submitOnChange: false
@@ -488,23 +520,14 @@
         // else {
             state.configGroupDevices.remove(btn)
             setting = 'automation_'+"${btn}"
-            LOGDEBUG ("${setting}")
             state.remove(setting)
+            removeAutomationDevice(btn)
         //}
 
-        LOGTRACE "$btn handled"
+        LOGTRACE "Automation device $btn deleted"
 
     }
 
-            //   AboutState += "<B>Device details</B>\n"
-            //     state.finalDeviceList.each { dev ->
-            //     devId = dev.getKey()
-            //     devName = dev.getValue()
-            //     AboutState += "<B>${devName}</B>\n"
-            //     state.deviceDetail[devId].each {
-            //     AboutState += "${it}\n"
-            //     }
-            //     AboutState += "\n"
 
     def settingsRemove() {
         state.remove("availGroupFeatures")
@@ -1096,21 +1119,17 @@
         }
     }
 
-    def createGroupDevice(name, arrFinalPickList ) { 
-        deviceFile = "${state.ExternalName} - Lightwave Switch"
-        dni = name
-        label = name
+    def createAutomationDevice(label) { 
+        deviceFile = "${state.ExternalName} - Lightwave Automation Device"
+        dni = label
+        name = "LWRF Automation Device - ${label}"
 
         def hub = location.hubs[0]
         try {
             def existingDevice = getChildDevice(dni)
             if(!existingDevice) {
                 def childDevice = addChildDevice("wogapat", deviceFile, dni, [name: name, label: label])
-                LOGTRACE("Child created: ${label}")
-                
-                if (installWebhook) {
-                    addWebhook(dni, label)
-                }
+                LOGTRACE("Child automation device created: ${label}")
 
                 state.configChildrenExist = true
             } else {
@@ -1249,7 +1268,12 @@
             state.webhookInstalled = false
         }
     }
-    
+
+    private removeAutomationDevice(dni) {
+		deleteChildDevice(dni)
+	}
+
+
    private removeChildDevices(delete) {
 	    LOGDEBUG("In removeChildDevices")
 	    LOGDEBUG("deleting ${delete.size()} devices")
@@ -1280,6 +1304,11 @@
         }
         LOGDEBUG("${arrFeatures}")
         getChildFeatureBatchReadPath(arrFeatures)
+    }
+
+    def setAutoDeviceOn(deviceNetworkId) {
+        features = state["automation_${deviceNetworkId}"].features
+        getFeatureBatchWrite(features)
     }
 
     def setChildSwitch(deviceNetworkId, value) {
