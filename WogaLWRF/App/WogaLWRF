@@ -31,6 +31,7 @@
         //page(name: "pageCreateNewDevices")
         page(name: "pageDiscoverAstructure")
         page(name: "pageDiscoveryStructures")
+        page(name: "pagePostInstallConfigure")
         page(name: "pageAutoDeviceAdmin")
         page(name: "pageEnterAutomationDevice")
         page(name: "pageCreateAutomationDevice")
@@ -75,8 +76,7 @@
                 } else {
                     settingsRemove()
                     href "pageAppState", title:"Status", description:"Tap to view the application status"
-                    href "pageTestApi", title: "Test API", description: "Test the API"
-                    href "pageIntegrationSettings", title:"Configure", description:"Tap to configure the lwRF API settings"
+                    href "pagePostInstallConfigure", title: "App Configuration, Preferences & Testing", description: "Configuration settings, App preferences & debugging"
                     href "pageAutoDeviceAdmin", title: "Automation Devices", description: "Add, change or delete devices for routines"
                     //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
                 }
@@ -126,7 +126,6 @@
             }
         }
     }
-
 
     def pageTestApi() {
         dynamicPage(name: "pageTestApi", title: "Test Api", install: true, uninstall: false){
@@ -296,16 +295,52 @@
         }
     }
 
+    def pagePostInstallConfigure() {
+        getAccessToken()
+        dynamicPage(name: "pagePostInstallConfigure", nextPage: "mainPage", install: true, uninstall: false){
+            section("<HR><B><CENTER>API Configuration</CENTER></B>"){
+            }
+            section ("<B>Basic Token:</B>"){
+                input "apiBasicToken", "string", title: "Enter the API basic token", multiple: false, required: true, submitOnChange: true
+                }
+            section ("<B>Refresh Token:</B>"){
+                input "apiRefreshToken", "string", title: "Enter the API refresh token:", multiple: false, required: true, submitOnChange: true
+                input "apiTestButton", "button", title: "Test API", submitOnChange: false
+            }
+            section ("<B>API Status:</B>") {
+                def APIState = ""
+                
+                if (state.session == true) {
+                    APIState += "Lightwave Linkplus connection established.\n"
+                }
+                else {
+                    APIState += "Lightwave Linkplus connection failed.\n"
+                    APIState += "Error: ${state.apiLastError}"
+                }
+                paragraph(APIState)
+            }
+            section("<HR><B><CENTER>Preferences</CENTER></B>") {
+        	    input "installWebhook", "bool", title: "Activate webhooks", description: "", submitOnChange: false
+            }
+            section ("<HR><B><CENTER>Debug</CENTER></B>") {
+                input "debugmode", "bool", title: "Enable debug logging", defaultValue: false, submitOnChange: true  
+                input "apiBatchFeatureRead", "button", title: "Batch Feature Read", submitOnChange: false
+            }
+            if (debugmode) { 
+                if (state.debugMode == false || state?.debugMode == null){
+                    state.debugMode = true; myRunIn(1800, disableDebug); LOGTRACE("Debug logging has been enabled.  Will auto-disable in 30 minutes.")
+                }
+            }
+        }
+    }
+
     def pageIntegrationSettings() {
         def myNextPage = ""
         dynamicPage(name: "pageIntegrationSettings", title: "Configure settings", nextPage: "startUpTest", install: false, uninstall: false){
             section("${state.formatSettingRootStart}API Client Token${state.formatSettingRootEnd}"){
                 input "apiBasicToken", "string", title: "Enter the API basic token", multiple: false, required: true, submitOnChange: true
             }
-            if (state.configOk == true) {
-                app.updateSetting("apiRefreshToken", [value: "${state.apiRefreshToken}", type:"string"])
-            }
-            else {
+            if (!state.session == true) {
                 app.updateSetting("apiRefreshToken", [value: "", type:"string"])
             }
             section ("${state.formatSettingRootStart}Refresh Token:${state.formatSettingRootEnd}"){
@@ -476,8 +511,9 @@
 
     def pageAutomationDeviceCreated() {
         autoDeviceCreate()
+        settingsRemove()
         createAutomationDevice("${settings.automationName}")
-        dynamicPage(name: "pageAutomationDeviceCreated", title: "Automation Device Created", install: true, uninstall: false){
+        dynamicPage(name: "pageAutomationDeviceCreated", title: "Automation Device Creation", install: true, uninstall: false){
             section() {
                 def DeviceCreate = ""
                 DeviceCreate += "Automation device ${settings.automationName} created.\n\n"
@@ -511,21 +547,27 @@
 
     }
 
-
     void appButtonHandler(btn) {
+        if (btn == "apiTestButton") {
+            getAccessToken()
+            LOGTRACE ("API test button handled")
+        }
+        else if (btn == "apiBatchFeatureRead") {
+            poll()
+            LOGTRACE ("Batch read button handled")
+
+        }
         // if (btn == "testbatch") {
         //     features = state['automation_group 3'].features
         //     getFeatureBatchWrite(features)
         // }
-        // else {
+        else {
             state.configGroupDevices.remove(btn)
             setting = 'automation_'+"${btn}"
             state.remove(setting)
             removeAutomationDevice(btn)
-        //}
-
-        LOGTRACE "Automation device $btn deleted"
-
+            LOGTRACE ("Automation device $btn deleted")
+        }
     }
 
 
@@ -1554,7 +1596,7 @@
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.2.2"
+            state.version = "1.2.3"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
