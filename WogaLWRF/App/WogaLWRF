@@ -900,12 +900,12 @@
 
     def getAccessToken() {
         state.session = false
-        LOGDEBUG("pre: ${state.apiRefreshToken}")
+        LOGDEBUG("pre: ${settings.apiRefreshToken}")
         params = [
             uri: getVendorAuthPath(),
             contentType: "application/json",
-            body: ["grant_type": "refresh_token", "refresh_token": "${state.apiRefreshToken}"],
-            headers: ["authorization": "basic ${state.apiBasicToken}"]
+            body: ["grant_type": "refresh_token", "refresh_token": "${settings.apiRefreshToken}"],
+            headers: ["authorization": "basic ${settings.apiBasicToken}"]
             ]
         
         try {
@@ -915,6 +915,7 @@
                     LOGTRACE("getAccessToken() OK")
                     state.apiRefreshToken = data.get("refresh_token")
                     app.updateSetting("apiRefreshToken", [value: "${state.apiRefreshToken}", type:"string"])
+                    state.apiBasicToken = settings.apiBasicToken
                     state.apiAccessToken = data.get("access_token")
                     apiSessionExpiresIn = data.get("expires_in").toInteger()
                     
@@ -1596,7 +1597,7 @@
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.2.3"
+            state.version = "1.2.4"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
