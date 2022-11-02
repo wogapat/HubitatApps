@@ -340,9 +340,6 @@
             section("${state.formatSettingRootStart}API Client Token${state.formatSettingRootEnd}"){
                 input "apiBasicToken", "string", title: "Enter the API basic token", multiple: false, required: true, submitOnChange: true
             }
-            if (!state.session == true) {
-                app.updateSetting("apiRefreshToken", [value: "", type:"string"])
-            }
             section ("${state.formatSettingRootStart}Refresh Token:${state.formatSettingRootEnd}"){
                 input "apiRefreshToken", "string", title: "Enter the API refresh token:", multiple: false, required: true, submitOnChange: true
             }
@@ -1597,7 +1594,7 @@
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.2.4"
+            state.version = "1.2.5"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
