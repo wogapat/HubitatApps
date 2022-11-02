@@ -587,7 +587,7 @@
             state.finalDeviceList.each { key, value ->
                 app.removeSetting("${automationName}_${key}")
             }
-            app.updateSetting("automationName", [value:"", type:"string"])
+            app.removeSetting("automationName", [value:"", type:"string"])
         }
     }
 
@@ -1177,10 +1177,6 @@
             LOGERROR("Error creating device: ${e}")
         }
     }
-
-
-
-
 
     def getSendChildEvent(featureId, value) {
         LOGDEBUG("featureId: ${featureId}")
