@@ -504,11 +504,11 @@
                 state["automation_${settings.automationName}"].features.push('{"featureId": "'+value+'", "value": '+finValue+'}')
             }
         }
+        createAutomationDevice("${settings.automationName}")
     }
 
     def pageAutomationDeviceCreated() {
         autoDeviceCreate()
-        createAutomationDevice("${settings.automationName}")
         dynamicPage(name: "pageAutomationDeviceCreated", title: "Automation Device Creation", install: true, uninstall: false){
             section() {
                 def DeviceCreate = ""
@@ -1169,7 +1169,6 @@
             if(!existingDevice) {
                 def childDevice = addChildDevice("wogapat", deviceFile, dni, [name: name, label: label])
                 LOGTRACE("Child automation device created: ${label}")
-
                 state.configChildrenExist = true
             } else {
                 LOGERROR("Device ${dni} already exists")
@@ -1525,6 +1524,7 @@
         getAccessToken()
         poll()
         version()
+        settingsRemove()
         LOGTRACE("Initialized (Parent Version: ${state.version})")
         if (state.hubType == "SmartThings") {sendNotificationEvent("${app.label.replace(" ","").toUpperCase()}: Settings activated")}
     //End initialize()
