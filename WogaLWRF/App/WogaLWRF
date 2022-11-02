@@ -508,7 +508,6 @@
 
     def pageAutomationDeviceCreated() {
         autoDeviceCreate()
-        settingsRemove()
         createAutomationDevice("${settings.automationName}")
         dynamicPage(name: "pageAutomationDeviceCreated", title: "Automation Device Creation", install: true, uninstall: false){
             section() {
