@@ -22,12 +22,12 @@ metadata {
 
 
 def on() {
-	parent?.setChildSwitchOn(device.deviceNetworkId)
-	}
+	parent?.setChildSwitch(device.deviceNetworkId, 1)
+}
 	
 def off() {
-	parent?.setChildSwitchOff(device.deviceNetworkId)
-	}
+	parent?.setChildSwitch(device.deviceNetworkId, 0)
+}
 	
 def updated() {
 	log.debug "updated()"
