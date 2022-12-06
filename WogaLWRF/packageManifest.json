@@ -1,1 +1,62 @@
 
+{
+        "packageName": "WogaLWF",
+        "releaseNotes": "v1.2.6   Added to Hubitat Package Manager.",
+        "documentationLink": "https://community.hubitat.com/t/lightwave-gen2-integration-wogalwrf/63447",
+        "communityLink": "https://community.hubitat.com/t/lightwave-gen2-integration-wogalwrf/63447",
+        "author": "wogapat",
+        "version": "1.2.6",
+        "minimumHEVersion": "0.1.4",
+        "dateReleased": "2022-12-06",
+        "category": "Integrations",
+        "tags": ["Lights & Switches", "Cloud"],
+        "apps": [
+           {
+                  "id": "",
+                  "name": "WogaLWRF",
+                  "namespace": "wogapat",
+                  "location": "https://github.com/wogapat/HubitatApps/blob/main/WogaLWRF/App/WogaLWRF.groovy",
+                  "required": true,
+                  "oauth": true,
+                  "description": "wogaLWRF Parent Application"
+           }
+        ]
+        "drivers": [
+          {
+                  "id": "",
+                  "name": "WogaLWRF - Automation Device",
+                  "namespace": "wogapat",
+                  "location": "https://github.com/wogapat/HubitatApps/main/WogaLWRF/Devices/WogaLWRF%20-%20L42.groovy",
+                  "required": true,
+                  "oauth": false,
+                  "description": "wogaLWRF L42 Device"
+           },
+           {
+                  "id": "",
+                  "name": "WogaLWRF - L42",
+                  "namespace": "wogapat",
+                  "location": "https://github.com/wogapat/HubitatApps/blob/main/WogaLWRF/Devices/WogaLWRF%20-%20Automation%20Device.groovy",
+                  "required": true,
+                  "oauth": false,
+                  "description": "wogaLWRF Automation Device"
+           },
+           {
+                  "id": "",
+                  "name": "WogaLWRF - LW400",
+                  "namespace": "wogapat",
+                  "location": "https://github.com/wogapat/HubitatApps/main/WogaLWRF/Devices/WogaLWRF%20-%20LW400.groovy",
+                  "required": true,
+                  "oauth": false,
+                  "description": "wogaLWRF LW400 Device"
+           },
+           {
+                  "id": "",
+                  "name": "WogaLWRF - Lightwave Switch",
+                  "namespace": "wogapat",
+                  "location": "https://github.com/wogapat/HubitatApps/main/WogaLWRF/Devices/WogaLWRF%20-%20Lightwave%20Switch.groovy.groovy",
+                  "required": true,
+                  "oauth": false,
+                  "description": "wogaLWRF Default Switch Device"
+           }
+        ]
+}
