@@ -8,11 +8,11 @@
       "name": "WogaLWF",
       "category": "Integrations",
       "location": "https://raw.githubusercontent.com/wogapat/HubitatApps/main/WogaLWRF/PackageManifest.json",
-      "description": "Integrate Lightwave Gen2 environment into your Hubitat system"
-	  "tags": [
-		"Cloud",
-		"Lights & Switches"
-      ],
+      "description": "Integrate Lightwave Gen2 environment into your Hubitat system",
+	    "tags": [
+		    "Cloud",
+		    "Lights & Switches"
+      ]
     }
   ]
 }
