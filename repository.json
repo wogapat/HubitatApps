@@ -1,1 +1,18 @@
-
+{
+  "author": "Patrick Wogan",
+  "gitHubUrl": "https://github.com/wogapat",
+  "payPalUrl": "https://www.paypal.com/donate/?business=N8M3ZEA8CMEY6&no_recurring=0&currency_code=GBP",
+  "packages": [
+    {
+      "id": "9b1aacfd-13de-4076-8703-cc6fc835dfce",
+      "name": "WogaLWF",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/wogapat/HubitatApps/main/WogaLWRF/PackageManifest.json",
+      "description": "Integrate Lightwave Gen2 environment into your Hubitat system"
+	  "tags": [
+		"Cloud",
+		"Lights & Switches"
+      ],
+    }
+  ]
+}
