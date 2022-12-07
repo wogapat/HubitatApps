@@ -2,23 +2,26 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
+    public static String version()      {  return "v1.2.6"  }
+	def getThisCopyright(){"&copy; 2020 P Wogan"}
+
     definition (
-    author: "Patrick Wogan",
-    category: "Home Automation",
-    documentationLink: "",
-    iconUrl: "",
-    importUrl: "",
-    iconX2Url: "",
-    name: "WogaLWRF",
-    description: "LightwaveRF Link Plus Smart Series Integration",
-    namespace: "wogapat",
-    oauth: true,
-    singleInstance: true
+        name: "WogaLWRF",
+        namespace: "wogapat",
+        author: "Patrick Wogan",
+        description: "LightwaveRF Link Plus Smart Series Integration",
+        category: "Home Automation",
+        importUrl: "https://github.com/wogapat/HubitatApps/main/WogaLWRF/App/WogaLWRF.groovy",
+        documentationLink: "",
+        iconUrl: "",
+        iconX2Url: "",
+        oauth: true,
+        singleInstance: true
     )
     
     {
-    appSetting "apiBasicToken"
-    appSetting "apiRefreshToken"
+        appSetting "apiBasicToken"
+        appSetting "apiRefreshToken"
     }
 
     preferences {
@@ -58,19 +61,57 @@
         path("/webhook") {action: [GET: "webhook", POST: "webhook"]}
     }
 
+    def getFormat(type, myText=""){            // Modified from @Stephack Code   
+	    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+	    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    }
+
+
+    def displayHeader() {
+	    section (getFormat("title", "WogaLWRF - Lightwave Integration")) {
+		    paragraph "<div style='color:#1A77C9;text-align:right;font-weight:small;font-size:9px;'>Developed by: Patrick Wogan<br/>Current Version: ${version()} -  ${thisCopyright}</div>"
+		    paragraph "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	    }
+    }
+
+    def displayMiniHeader(titleText) {
+	    section (getFormat("title", "WogaLWRF - Lightwave Integration")) {
+            paragraph "<div style=';font-weight:medium;font-size:18px;'>${titleText}</div>"
+            paragraph "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	    }
+    }
+
+    def displayAbout(){
+	    section() {
+		    paragraph getFormat("line")
+            def AboutApp = ""
+            AboutApp += "Integrate Hubitat directly with Lightwave Link using ${state.ExternalName} and the Link Plus Smart Series API\n"
+            AboutApp += "You will need an active Lightwave Link Plus Account, an API Bearer Token and a Refresh Token.\n\n" 
+            AboutApp += "Go to the ‘settings’ page on either the Link Plus app or the web client <a target='_blank' href='https://my.lightwaverf.com'>https://my.lightwaverf.com</a>.\nIn your Lightwave Link Plus Account section, look for ‘API Integration’ and ‘Get Token'.\nAfter enterering your Link Plus account password you will be presented with the bearer and refresh tokens.\nCopy the bearer and refresh tokens to ${state.ExternalName} settings.\n\n"
+		    AboutApp += "IMPORTANT\nRefresh token only useable once.\n ${state.ExternalName} maintains a session with Lighwave Link and updates refresh token automatically.\n In case of error you can create a new refresh token directly in the your Link account and update it in the  ${state.ExternalName} settings.\n"
+            paragraph "<div style='text-align:left;font-weight:small;font-size:16px;'>${AboutApp}</div>"
+        }
+    }       
+
+    def displayFooter(){
+	    section() {
+		    paragraph getFormat("line")
+		    paragraph "<div style='color:#1A77C9;text-align:center;font-weight:small;font-size:11px;'>wogaLWRF - Lightwave Integration<br><a href='https://www.paypal.com/donate/?business=N8M3ZEA8CMEY6&no_recurring=0&currency_code=GBP' target='_blank'><img src='https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg' border='0' alt='PayPal Logo'></a><br><br>Please consider donating.</div>"
+	    }       
+    }
+
     def mainPage(){
         state.namespace = "wogapat"
         setVersion()
         state.hubType = getHubType()
         LOGDEBUG("Hub Type: ${state.hubType}")
-        setFormatting()
         if (checkConfig()) { 
             // Do nothing here, but run checkConfig() 
-        } 
-        dynamicPage(name: "mainPage", title: "WogaLWRF", install: false, uninstall: (app.getInstallationState() == "COMPLETE")){
+        }
+        return dynamicPage(name: "mainPage", title: "", install: false, uninstall: (app.getInstallationState() != "COMPLETE")) {
+            displayHeader()
             section(){
                 LOGDEBUG("install state=${app.getInstallationState()}.")
-                def mydebug_pollnow = ""
                 if (!state.configOk == true) { 
                     href "pageIntegrationSettings", title:"Configure", description:"Tap to configure the lwRF API settings"
                 } else {
@@ -81,55 +122,50 @@
                     //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
                 }
             }
-            section("About"){
-                def AboutApp = ""
-                if (state.hubType == "Hubitat") {AboutApp += "<HR>Integrate Hubitat directly with Lightwave Link using ${state.ExternalName} and the Link Plus Smart Series API)\n\n"}
-                AboutApp += "In order to integrate with Lightwave Link you will need to have a valid and active Lightwave Link Plus Account. You’ll then need to request an API Bearer and a Refresh Token. To do this go to the ‘settings’ page on either the Link Plus app or the web client <a target='_blank' href='https://my.lightwaverf.com'>https://my.lightwaverf.com</a>.\n\nIn your Lightwave Link Plus Account section, look for ‘API Integration’ and ‘Get Token'. At this point you will be required to enter your Link Plus account password.\n\nOnce successful you will be presented with the bearer and refresh tokens. These tokens can then be copied to ${state.ExternalName} settings.\n\nIMPORTANT\nRefresh token only useable once. ${state.ExternalName} uses a new refresh token from the response to connect and updates the settings to show the new code. In case of error you can create a new refresh token directly in the your Link account and update it in the  ${state.ExternalName} settings.\n"
-                paragraph(AboutApp)
-            }
-                
-            section("") {
-                //updateCheck()
-                //checkButtons()
-                displayVersionStatus()
-            }
-            section("<HR><HR><B><CENTER>Donations</CENTER></B>"){
-                def DonateOptions = ""
-                DonateOptions += "${state.ExternalName} is provided to the community for free.  It takes a lot of time to build and support any complex app.  If you wish to support the time and effort put into development you may submit a donation with one of the following:<BR>"
-                DonateOptions += "<ul>"
-                DonateOptions += '<li><B>Paypal.me</B> = <a target="_blank" href="https://paypal.me/pswogan">https://paypal.me/pswogan</a></li>'
-                paragraph(DonateOptions)                    
-            }
+            if (app.getInstallationState() != "COMPLETE") displayAbout()
+            displayFooter()
         }
     }
 
-    def pageViewStructure() {}
     def pageAppState() {
-    dynamicPage(name: "pageAppState", title: "Application state", install: false, uninstall: false){
-        section() {
-            def AboutState = ""
-                AboutState += "<B>Lightwave session</B>\n"
+        return dynamicPage(name: "pageAppState", title: "", install: false, uninstall: false){
+            displayMiniHeader("Application state")
+            section() {
+                def AboutState = ""
+                AboutState += "<B>Lightwave session</B>\n\n"
                 AboutState += "Refresh Token: ${state.apiRefreshToken}\n"
                 AboutState += "API Access Token: ${state.apiAccessToken}\n"
                 AboutState += "Active Session: ${state.session}\n\n"
-                AboutState += "<B>Device details</B>\n"
+                def AboutDetails = ""
+                AboutDetails += "<B>Device details</B>\n\n"
                 state.finalDeviceList.each { dev ->
-                devId = dev.getKey()
-                devName = dev.getValue()
-                AboutState += "<B>${devName}</B>\n"
-                state.deviceDetail[devId].each {
-                AboutState += "${it}\n"
+                    devId = dev.getKey()
+                    devName = dev.getValue()
+                    AboutDetails += "<B>${devName}</B>\n"
+                    state.deviceDetail[devId].each {
+                        AboutDetails += "${it}\n"
+                    }
+                    AboutDetails += "\n"
                 }
-                AboutState += "\n"
+                def AboutGroup = ""
+                AboutGroup += "<B>Group device details</B>\n\n"
+                state.configGroupDevices.each { gDev ->
+                    AboutGroup += "${gDev}\n"
                 }
                 paragraph(AboutState)
+                paragraph(getFormat("line"))
+                paragraph(AboutDetails)
+                paragraph(getFormat("line"))
+                paragraph(AboutGroup)
             }
+            displayFooter()
         }
     }
 
     def pageTestApi() {
-        dynamicPage(name: "pageTestApi", title: "Test Api", install: true, uninstall: false){
-            section(""){
+        return dynamicPage(name: "pageTestApi", title: "Test Api", install: true, uninstall: false){
+            displayHeader()
+            section(){
                 input "debugmode", "bool", title: "${state.formatSettingRootStart}Enable debug logging${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
                 input "testapi", "bool", title: "${state.formatSettingRootStart}Check API${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
                 input "stateread", "bool", title: "${state.formatSettingRootStart}Batch state read from Lightwave${state.formatSettingRootEnd}", required: true, defaultValue: false, submitOnChange: true
@@ -159,11 +195,12 @@
         createDevices()
         dynPageProperties = [
             name:       "pageCreateDevices",
-            title:      "Creating devices",
+            title:      "",
             install:    true,
             uninstall:  false
         ]
         return dynamicPage(dynPageProperties) {
+            displayMiniHeader("Creating devices")
             section() {
                 def CreateDevices = ""
                 if (!state.configChildrenExist == true) {
@@ -174,13 +211,7 @@
                 }
                 paragraph(CreateDevices)
             }
-            section("<HR><HR><B><CENTER>Donations</CENTER></B>"){
-                def DonateOptions = ""
-                DonateOptions += "${state.ExternalName} is provided to the community for free.  It takes a lot of time to build and support any complex app.  If you wish to support the time and effort put into development you may submit a donation with one of the following:<BR>"
-                DonateOptions += "<ul>"
-                DonateOptions += '<li><B>Paypal.me</B> = <a target="_blank" href="https://paypal.me/pswogan">https://paypal.me/pswogan</a></li>'  
-                paragraph(DonateOptions)              
-            }             
+            displayFooter()                           
         }
     }
 
@@ -189,7 +220,7 @@
         if (state.configGetAstructure == true) {
         dynPageProperties = [
                 name:       "pageDiscoverAstructure",
-                title:      "Discovering your devices",
+                title:      "",
                 nextPage:   "pageCreateDevices",
                 install:    false,
                 uninstall:  false
@@ -197,12 +228,13 @@
         } else {
         dynPageProperties = [
                 name:       "pageDiscoverAstructure",
-                title:      "Discovering your devices",
+                title:      "",
                 install:    true,
                 uninstall:  false
             ]
         }
         return dynamicPage(dynPageProperties) {
+            displayMiniHeader("Discovering your devices")
             section() {
                 def DiscoverAstructure = ""
                 if (state.configGetAstructure == true) {
@@ -227,12 +259,13 @@
         if (state.configGetStructure == true) {}
             dynPageProperties = [
                 name:       "pageDiscoveryStructures",
-                title:      "Discovering your structure",
+                title:      "",
                 nextPage:   "pageDiscoverAstructure",
                 install:    false,
                 uninstall:  false
             ]      
         return dynamicPage(dynPageProperties) {
+            displayMiniHeader("Discovering your structure")
             section() {
                 def DiscoveryStructure = ""
                 if (state.configGetStructure == true) {
@@ -253,7 +286,7 @@
         if (!state.installed == true && state.session == true) {
             dynPageProperties = [
                 name:       "startUpTest",
-                title:      "API Testing",
+                title:      "",
                 nextPage:   "pageDiscoveryStructures",
                 install:    false,
                 uninstall:  false
@@ -262,7 +295,7 @@
         } else if (!state.session == true) {
             dynPageProperties = [
                 name:       "startUpTest",
-                title:      "API Testing",
+                title:      "",
                 nextPage:   "pageIntegrationSettings",
                 install:    false,
                 uninstall:  false
@@ -271,13 +304,14 @@
         } else {
             dynPageProperties = [
                 name:       "startUpTest",
-                title:      "API Testing",
+                title:      "",
                 install:    true,
                 uninstall:  false
             ]
             StartupTest += "API tested successfully. Session established.\n\n"
         }
         return dynamicPage(dynPageProperties) {
+            displayMiniHeader("API Testing")
             section() {
                 def StartupTest = ""
                 StartupTest += "Your API settings have been tested. The result is shown below.\n\n"
@@ -297,21 +331,24 @@
 
     def pagePostInstallConfigure() {
         getAccessToken()
-        dynamicPage(name: "pagePostInstallConfigure", nextPage: "mainPage", install: true, uninstall: false){
-            section("<HR><B><CENTER>API Configuration</CENTER></B>"){
-            }
-            section ("<B>Basic Token:</B>"){
+        return dynamicPage(name: "pagePostInstallConfigure", nextPage: "mainPage", install: true, uninstall: false){
+            displayMiniHeader("Configuration, Preferences & Testing")
+            section(){
+                paragraph "<B>Basic Token:</B>"
                 input "apiBasicToken", "string", title: "Enter the API basic token", multiple: false, required: true, submitOnChange: true
-                }
-            section ("<B>Refresh Token:</B>"){
+            }
+            section (){
+                paragraph "<B>Refresh Token:</B>\n"
                 input "apiRefreshToken", "string", title: "Enter the API refresh token:", multiple: false, required: true, submitOnChange: true
                 input "apiTestButton", "button", title: "Test API", submitOnChange: false
             }
-            section ("<B>API Status:</B>") {
+            section () {
+                paragraph getFormat("line")
+                paragraph "<B>API Status:</B>\n\n"
                 def APIState = ""
                 
                 if (state.session == true) {
-                    APIState += "Lightwave Linkplus connection established.\n"
+                    APIState += "Lightwave Linkplus connection established."
                 }
                 else {
                     APIState += "Lightwave Linkplus connection failed.\n"
@@ -319,13 +356,18 @@
                 }
                 paragraph(APIState)
             }
-            section("<HR><B><CENTER>Preferences</CENTER></B>") {
+            section() {
+                paragraph getFormat("line")
+                paragraph "<B>Preferences</B>\n\n"
         	    input "installWebhook", "bool", title: "Activate webhooks", description: "", submitOnChange: false
             }
-            section ("<HR><B><CENTER>Debug</CENTER></B>") {
-                input "debugmode", "bool", title: "Enable debug logging", defaultValue: false, submitOnChange: true  
+            section () {
+                paragraph getFormat("line")
+                paragraph"<B>Debug</B>\n\n"
+                input "debugmode", "bool", title: "Enable debug logging", defaultValue: false, submitOnChange: true
                 input "apiBatchFeatureRead", "button", title: "Batch Feature Read", submitOnChange: false
             }
+            displayFooter()
             if (debugmode) { 
                 if (state.debugMode == false || state?.debugMode == null){
                     state.debugMode = true; myRunIn(1800, disableDebug); LOGTRACE("Debug logging has been enabled.  Will auto-disable in 30 minutes.")
@@ -336,7 +378,8 @@
 
     def pageIntegrationSettings() {
         def myNextPage = ""
-        dynamicPage(name: "pageIntegrationSettings", title: "Configure settings", nextPage: "startUpTest", install: false, uninstall: false){
+        return dynamicPage(name: "pageIntegrationSettings", title: "", nextPage: "startUpTest", install: false, uninstall: false){
+            displayMiniHeader("Configure settings")
             section("${state.formatSettingRootStart}API Client Token${state.formatSettingRootEnd}"){
                 input "apiBasicToken", "string", title: "Enter the API basic token", multiple: false, required: true, submitOnChange: true
             }
@@ -360,10 +403,10 @@
 
     def pageAutoDeviceAdmin() {
         settingsRemove()
-        dynamicPage(name: "pageAutoDeviceAdmin", title: "Group Device Administration", install: true, uninstall: false) {
+        return dynamicPage(name: "pageAutoDeviceAdmin", title: "", install: true, uninstall: false) {
+            displayMiniHeader("Group Device Administration")
             section(){
                 LOGDEBUG("install state=${app.getInstallationState()}.")
-                def mydebug_pollnow = ""
                 if (!state.configGroupDevices) { 
                     href "pageEnterAutomationDevice", title: "Create an Automation Device", description: "Group device features into a single device for routines"
                 } else {
@@ -371,63 +414,68 @@
                     href "pageAdminAutomationDevice", title: "Administer Automation Devices", description: "Change or delete automation devices"
                     //href "pageTestBatchWrite", title: "Test Batch Write", description: "Test Batch Feature Write"
                 }
-            }       
+            }
+            displayFooter()       
         }
     }
 
     def pageEnterAutomationDevice() { 
         def existingDevice = state["automation_${automationName}"]
+        if (!automationName) {
+            next = "pageAutoDeviceAdmin"
+        } else  {
+            next = "pageCreateAutomationDevice"
+        }
+
+        dynPageProperties = [
+            name:       "pageEnterAutomationDevice",
+            title:      "",            
+            nextPage:   next,
+            install:    false,
+            uninstall:  false
+        ]
         if (!existingDevice) {
-            dynPageProperties = [
-                name:       "pageEnterAutomationDevice",
-                title:      "Enter The Automation Device Details",
-                nextPage:   "pageCreateAutomationDevice",
-                install:    false,
-                uninstall:  false
-            ]
-            return dynamicPage(dynPageProperties) {
-                section("${state.formatSettingRootStart}Automation Name${state.formatSettingRootEnd}"){
-                    input "automationName", "string", title: "Enter the automation device name", multiple: false, required: true, submitOnChange: true
-                }
+                return dynamicPage(dynPageProperties) {
+                    displayMiniHeader("Automation Device Details")
+                    section(){
+                        paragraph "<b>Your Automation Device</b>\n"
+                        input "automationName", "string", title: "Enter the automation device name", multiple: false, required: (automationName), submitOnChange: true
+                    }
 
-                section ("${state.formatSettingRootStart}Available Switches:${state.formatSettingRootEnd}"){
-                    state.finalDeviceList.each { key, value ->
-                        deviceId = key
-                        //LOGDEBUG("deviceId: ${deviceId}")
-                        name = value
-                        //LOGDEBUG("name: ${name}")
+                    section (){
+                        paragraph "<b>Available Switches</b>\n"
+                        state.finalDeviceList.each { key, value ->
+                            deviceId = key
+                            LOGDEBUG("deviceId: ${deviceId}")
+                            name = value
+                            LOGDEBUG("name: ${name}")
 
-                        switchPresent = state.deviceDetail["${key}"].features.switch
-                        dimPresent = state.deviceDetail["${key}"].features.dimLevel
+                            switchPresent = state.deviceDetail["${key}"].features.switch
+                            dimPresent = state.deviceDetail["${key}"].features.dimLevel
                     
-                        //LOGDEBUG("deviceType: ${deviceType}")
-                        if (switchPresent)  {
-                            input "${key}", "bool", title: "${name}", defaultValue: false, submitOnChange: true  
+                            LOGDEBUG("deviceType: ${deviceType}")
+                            
+                            if (switchPresent)  {
+                                input "${key}", "bool", title: "${name}", defaultValue: false, submitOnChange: true  
+                            }
                         }
                     }
                 }
-            }
-        } 
-        else {
-            dynPageProperties = [
-                name:       "pageEnterAutomationDevice",
-                title:      "Change The Automation Device Details",
-                nextPage:   "pageAutoDeviceAdmin",
-                install:    false,
-                uninstall:  false
-            ]
-            return dynamicPage(dynPageProperties) {
-                section() {
-                    def ErrorMessage = ""
-                    ErrorMessage += "Automation device exists - Delete or choose another name"
-                    paragraph(ErrorMessage)
-                }
-                section("${state.formatSettingRootStart}Automation Name${state.formatSettingRootEnd}"){
-                    input "automationName", "string", title: "Change the automation device name", multiple: false, required: true, submitOnChange: true
+            } else {
+                return dynamicPage(dynPageProperties) {
+                    displayMiniHeader("Change The Automation Device Details")
+                    section() {
+                        def ErrorMessage = ""
+                        ErrorMessage += "Automation device exists - Delete or choose another name"
+                        paragraph(ErrorMessage)
+                    }
+                    section(){
+                        paragraph "<b>Your Automation Device</b>\n"
+                        input "automationName", "string", title: "Change the automation device name", multiple: false, required: (automationName), submitOnChange: true
+                    }
                 }
             }
         }
-    }
 
 
 
@@ -451,11 +499,10 @@
             dimOptions << ["90": "90"]
             dimOptions << ["100": "100"]
 
-        dynamicPage(name: "pageCreateAutomationDevice", title: "Enter Group Details", nextPage: "pageAutomationDeviceCreated", install: false, uninstall: false){
+        return dynamicPage(name: "pageCreateAutomationDevice", title: "", nextPage: "pageAutomationDeviceCreated", install: false, uninstall: false){
+            displayMiniHeader("${settings.automationName}")
             section() {
-                // def DeviceCreate = ""
-                // DeviceCreate += "Done.\n\n"
-                // paragraph(DeviceCreate)
+                paragraph "<b>Select the feature values</b>\n"
                 state.finalDeviceList.each { key, value ->
                     deviceId = key
                     //LOGDEBUG("deviceId: ${deviceId}")
@@ -509,18 +556,21 @@
 
     def pageAutomationDeviceCreated() {
         autoDeviceCreate()
-        dynamicPage(name: "pageAutomationDeviceCreated", title: "Automation Device Creation", install: true, uninstall: false){
+        return dynamicPage(name: "pageAutomationDeviceCreated", title: "", install: true, uninstall: false){
+            displayMiniHeader("${settings.automationName} creation")
             section() {
                 def DeviceCreate = ""
                 DeviceCreate += "Automation device ${settings.automationName} created.\n\n"
                 paragraph(DeviceCreate)
             }
+            displayFooter()
         }
     }
 
 
     def pageAdminAutomationDevice() {
-        dynamicPage(name: "pageAdminAutomationDevice", title: "Administer Devices", nextPage: "pageAutoDeviceAdmin", install: false, uninstall: false){
+        return dynamicPage(name: "pageAdminAutomationDevice", title: "", nextPage: "pageAutoDeviceAdmin", install: false, uninstall: false){
+            displayMiniHeader("Administer Devices")
             section() {
                 state.configGroupDevices.each { value ->
                     input "${value}", "button", title: "Delete ${value}", submitOnChange: false
@@ -532,7 +582,8 @@
     }
 
     def pageTestBatchWrite() {
-        dynamicPage(name: "pageTestBatchWrite", title: "Test Device", install: false, uninstall: false){
+        return dynamicPage(name: "pageTestBatchWrite", title: "", install: false, uninstall: false){
+            displayMiniHeader("Test Device")
             section() {
                 state.configGroupDevices.each { value ->
                     input "testbatch", "button", title: "Test ${value}", submitOnChange: false
@@ -544,32 +595,30 @@
     }
 
     void appButtonHandler(btn) {
-        if (btn == "apiTestButton") {
-            getAccessToken()
-            LOGTRACE ("API test button handled")
-        }
-        else if (btn == "apiBatchFeatureRead") {
-            poll()
-            LOGTRACE ("Batch read button handled")
+        switch (btn) {
+            case "apiTestButton":
+                getAccessToken()
+                LOGTRACE ("API test button handled")
+                break
+            case "apiBatchFeatureRead":
+                poll()
+                LOGTRACE ("Batch read button handled")
+                break
 
-        }
-        // if (btn == "testbatch") {
-        //     features = state['automation_group 3'].features
-        //     getFeatureBatchWrite(features)
-        // }
-        else {
-            state.configGroupDevices.remove(btn)
-            setting = 'automation_'+"${btn}"
-            state.remove(setting)
-            removeAutomationDevice(btn)
-            LOGTRACE ("Automation device $btn deleted")
+            default:
+                state.configGroupDevices.remove(btn)
+                setting = 'automation_'+"${btn}"
+                state.remove(setting)
+                removeAutomationDevice(btn)
+                LOGTRACE ("Automation device $btn deleted")
         }
     }
 
 
     def settingsRemove() {
-        state.remove("availGroupFeatures")
-        state.finalDeviceList.each { key, value ->
+        if (settings.automationName != "") {
+            state.remove("availGroupFeatures")
+            state.finalDeviceList.each { key, value ->
                 app.removeSetting("${key}")
                 switchPresent = state.deviceDetail["${key}"].features.switch
                 dimPresent = state.deviceDetail["${key}"].features.dimLevel
@@ -583,16 +632,16 @@
                 }
             }
 
-        if (automationName != "") {
             state.finalDeviceList.each { key, value ->
                 app.removeSetting("${automationName}_${key}")
             }
-            app.removeSetting("automationName", [value:"", type:"string"])
+            app.removeSetting("automationName")
         }
     }
 
 
     def getFeatureWrite(featureSetId, value, attribute) {
+        LOGDEBUG("${featureSetId}, ${value}, ${attribute}")
         String strBody = '{"value": '+value+'}'
         LOGDEBUG("${strBody}")
 
@@ -1211,6 +1260,7 @@
             }
         
         } else if (responseType == "lock") {
+            attribute = "childProtection"
             switch (value) {
                 case(0):
                     finValue = "unlocked"
@@ -1354,7 +1404,7 @@
     }
 
     def setChildProtection(deviceNetworkId, value) {
-        getFeatureWrite(deviceNetworkId, value, "protection")
+        getFeatureWrite(deviceNetworkId, value, "lock")
     }
 
     def setChildIdentify(deviceNetworkId, value) {
@@ -1502,7 +1552,7 @@
         subscribe(location, "systemStart", handleReboot)
     }
     def handleReboot(evt) {
-       myRunIn(600, initialize)
+       myRunIn(600, getAccessToken)
     }
 
     def initialize() {
@@ -1539,14 +1589,6 @@
 	    log.debug "uninstalled()"
     }
 
-    def version(){
-        //Cobra update code, modified by Rayzurbock
-        //resetBtnName()
-        //schedule("0 0 9 ? * FRI *", updateCheck) //  Check for updates at 9am every Friday
-        //updateCheck()  
-        //checkButtons()
-        //pauseOrNot()
-    }
 
     def checkConfig() {
         def configErrorList = ""
@@ -1589,7 +1631,7 @@
 
     def setVersion(){
             //Cobra update code, modified by Rayzurbock
-            state.version = "1.2.5"
+            state.version = "1.2.6"
             state.InternalName = "wogalwrf"
             state.ExternalName = "WogaLWRF"
     }
