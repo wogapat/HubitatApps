@@ -6,7 +6,7 @@
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     definition (
-        name: "WogaLWRF",
+        name: "WogaLWRF Lightwave Integration",
         namespace: "wogapat",
         author: "Patrick Wogan",
         description: "LightwaveRF Link Plus Smart Series Integration",
