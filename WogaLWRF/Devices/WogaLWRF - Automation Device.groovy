@@ -23,7 +23,7 @@ metadata {
 def on() {
 	parent?.setAutoDeviceOn(device.deviceNetworkId)
     sendEvent(name: "switch", value: "on")
-    myRunIn(2, "off")
+    myRunIn(30, "off")
 	}
 	
 def off() {

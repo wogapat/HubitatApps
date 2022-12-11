@@ -2,6 +2,8 @@
  *  WogaLWRF - LW400
  *
  *  Copyright 2021 Patrick Wogan
+ *  
+ *  Adapted From Virtual Contact Sensor with Switch by Stephan Hackett
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -15,15 +17,18 @@
  */
 metadata {
 	definition (name: "WogaLWRF - LW400", namespace: "wogapat", author: "Patrick Wogan") {
-		capability "Switch"
+		capability "Sensor"
+        capability "Contact Sensor"
+        capability "Switch"
 		capability "Switch Level"
-        capability "Lock"
         
-        command "identifyOn"
-        command "identifyOff"
+        command "ident"
+        command "childLock"
+        command "childUnlock"
 
 		attribute "identify", "String"
 		attribute "dimLevel", "number"
+        attribute "childProtection", "String"
     }
 }
 
@@ -32,33 +37,60 @@ def poll() {
     parent?.childPoll(device.deviceNetworkId)
 }
 
-def on() {
-	parent?.setChildSwitch(device.deviceNetworkId, 1)
+def open(){
+	sendEvent(name: "contact", value: "open")
+	if(reversed) switchVal = "off"
+	else switchVal = "on"
+	sendEvent(name: "switch", value: switchVal)
 }
-	
-def off() {
-	parent?.setChildSwitch(device.deviceNetworkId, 0)
+
+def close(){
+	sendEvent(name: "contact", value: "closed")
+	if(reversed) switchVal = "on"
+	else switchVal = "off"
+	sendEvent(name: "switch", value: switchVal)
+}
+
+def on(){
+    sendEvent(name: "switch", value: "on")
+    if(reversed==true) {
+        contactVal = "closed"
+        parent?.setChildSwitch(device.deviceNetworkId, 0)
+    } else {
+        contactVal = "open"
+        parent?.setChildSwitch(device.deviceNetworkId, 1)
+    }
+	sendEvent(name: "contact", value: contactVal)
+}
+
+def off(){
+    sendEvent(name: "switch", value: "off")
+    if(reversed==true) {
+        contactVal = "open"
+        parent?.setChildSwitch(device.deviceNetworkId, 1)
+    } else {
+        contactVal = "closed"
+        parent?.setChildSwitch(device.deviceNetworkId, 0)
+    }
+	sendEvent(name: "contact", value: contactVal)
 }
 
 def setLevel(nextLevel, duration=null) {
 	parent?.setChildSetLevel(device.deviceNetworkId, nextLevel)
 }
 	
-def lock() {
+def childLock() {
+    sendEvent(name: "childProtection", value: "on")
 	parent?.setChildProtection(device.deviceNetworkId, 1)
 }
 
-def unlock() {
+def childUnlock() {
+    sendEvent(name: "childProtection", value: "off")
 	parent?.setChildProtection(device.deviceNetworkId, 0)
 }
 
-def identifyOn() {
+def ident() {
 	parent?.setChildIdentify(device.deviceNetworkId, 1)
-	myRunIn(180, disableIdentify)
-}
-
-def identifyOff() {
-	parent?.setChildIdentify(device.deviceNetworkId, 0)
 }
 
 def updated() {
@@ -75,9 +107,6 @@ def initialize() {
 	unschedule()
 		}
 
-private def disableIdentify() {
-	parent?.setChildIdentify(device.deviceNetworkId, 0)
-    }
 
 private def myRunIn(delay_s, func) {
     //LOGDEBUG("myRunIn(${delay_s},${func})")
