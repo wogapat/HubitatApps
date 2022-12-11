@@ -22,7 +22,7 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
-    public static String version()      {  return "1.2.9"  }
+    public static String version()      {  return "1.2.10"  }
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     def displayVersionStatus(){
@@ -870,7 +870,6 @@
                     LOGTRACE("getFeatureWrite() OK")
                 }
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("getFeatureWrite() - ${error}")
@@ -908,7 +907,6 @@
                     LOGTRACE("getChildFeatureReadBatch() OK")
                 }
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("getChildFeatureReadBatch() - ${error}")
@@ -937,7 +935,6 @@
                     LOGTRACE("getFeatureBatchWrite() OK")
                 }
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("getFeatureBatchWrite() - ${error}")
@@ -1102,7 +1099,6 @@
                     LOGTRACE("getAstructure() OK")
                 }
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("getAStructure() - ${error}")
@@ -1133,7 +1129,6 @@
                     LOGTRACE("getStructure() OK")
                 }
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("getStructure() - ${error}")
@@ -1168,7 +1163,6 @@
                     LOGTRACE("getAccessToken() OK")
                 }
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("getAccessToken() - ${error}")
@@ -1198,7 +1192,6 @@
                         
                     }
                 }
-
             } catch (Exception e) {
                 def error = e.toString()
                 LOGERROR("deleteEvents() - ${error}")
@@ -1385,7 +1378,6 @@
 
             try {
                 createChildDevice(deviceFile, deviceId, deviceId, name)
-
             } catch (Exception e) {
                 def error = e.toString()
                 LOGERROR("Error creating device: ${error}")
@@ -1411,7 +1403,6 @@
             } else {
                 LOGERROR("Device ${dni} already exists")
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("Error creating device: ${error}")
@@ -1435,7 +1426,6 @@
             } else {
                 LOGERROR("Device ${dni} already exists")
             }
-
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("Error creating device: ${error}")
