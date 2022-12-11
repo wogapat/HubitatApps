@@ -199,6 +199,7 @@
     def autoDeviceCreate() {
         LOGDEBUG("autoDeviceCreate()")
         state.apiBatchFeatureWrite = [:]
+        LOGDEBUG"${settings.automationName}"
         state.apiBatchFeatureWrite["${settings.automationName}"] = [:]
         state.apiBatchFeatureWrite["${settings.automationName}"].features = []
         state["automation_${settings.automationName}"] = [:]
@@ -677,7 +678,7 @@
                             switchFeatureId = state.deviceDetail["${key}"].features.switch.featureId
                             state.availGroupFeatures.push(switchFeatureId)
 
-                            input "${switchFeatureId}", "enum", title: "Select ${name} switch value", options: switchOptions, required: true
+                            input "${switchFeatureId}", "enum", title: "Select <b>${name}</b> switch value", options: switchOptions, required: true
                                            
                             if (state.amendAutoDevice) {
                                 if (state["automation_"+"${state.amendAutoDevice}"].features.contains(switchFeatureId)) {
@@ -694,7 +695,7 @@
                                 dimLevelFeatureId = state.deviceDetail["${key}"].features.dimLevel.featureId
                                 state.availGroupFeatures.push(dimLevelFeatureId)
 
-                                input "${dimLevelFeatureId}", "enum", title: "Select ${name} dim value", options: dimOptions, required: true
+                                input "${dimLevelFeatureId}", "enum", title: "Select <b>${name}</b> dim value", options: dimOptions, required: true
                             
                                 if (state.amendAutoDevice) {
                                     if (state["automation_"+"${state.amendAutoDevice}"].features.contains(dimLevelFeatureId)) {
@@ -714,7 +715,7 @@
 
     def pageAutomationDeviceCreated() {
         LOGDEBUG("pageAutomationDeviceCreated()") 
-        if (!state.amendAutoDevice) autoDeviceCreate()
+        autoDeviceCreate()
         return dynamicPage(name: "pageAutomationDeviceCreated", nextPage: "pageAutoDeviceAdmin", title: "", install: false, uninstall: false){
             def DeviceCreate = ""
             if (!state.amendAutoDevice) {
