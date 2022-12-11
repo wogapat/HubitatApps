@@ -18,7 +18,7 @@
  */
  
 
- //********** !!!!! IMPORTANT - If your current version is less than 1.3.1 uninstall & re-install is recommended  
+ //********** !!!!! IMPORTANT - If your current version is less than 1.2.7 uninstall & re-install is recommended  
    
     import java.text.DecimalFormat
     import groovy.json.JsonSlurper
