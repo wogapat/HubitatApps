@@ -5,7 +5,7 @@
   "packages": [
     {
       "id": "9b1aacfd-13de-4076-8703-cc6fc835dfce",
-      "name": "WogaLWF",
+      "name": "WogaLWRF Lightwave Integration",
       "category": "Integrations",
       "location": "https://raw.githubusercontent.com/wogapat/HubitatApps/main/WogaLWRF/PackageManifest.json",
       "description": "Integrate Lightwave Gen2 environment into your Hubitat system",
