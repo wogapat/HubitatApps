@@ -1,5 +1,5 @@
    /*
- *  WogaLWRF - L42
+ *  WogaLWRF - Lightwave Integration
  *
  *  Copyright 2021 Patrick Wogan
  *  
