@@ -22,7 +22,7 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
-    public static String version()      {  return "1.2.10"  }
+    public static String version()      {  return "1.2.11"  }
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     def displayVersionStatus(){
@@ -409,12 +409,23 @@
 
     def pagePostAppPrefs() {
         LOGDEBUG("pagePostAppPrefs()")
+        
+        if (installWebhook == true && !state.webhookInstalled) {
+            children = getChildDevices()
+            children.each {addWebhook(it.deviceNetworkId, it.label)}
+        }
+        if (installWebhook != true && state.webhookInstalled) {
+            deleteEvents(getEvents())
+        }
 
         return dynamicPage(name: "pagePostAppPrefs", title: "", nextPage: "pagePostInstallConfigure", install: false, uninstall: false){
             displayMiniHeader("Application Preferences")
              section() {
                 paragraph "<B>Preferences</B>\n\n"
-        	    input "installWebhook", "bool", title: "Activate webhooks", description: "", submitOnChange: true
+        	    input "installWebhook", "bool", title: "Activate webhooks", description: "", submitOnChange: true, defaultValue: (state.webhookInstalled)
+                input "getEvents", "button", title: "Get Registered Webhook Events", submitOnChange: true
+                //input "deleteEvents", "button", title: "Delete Events", submitOnChange: true
+                //input "createEvents", "button", title: "Create Events", submitOnChange: true
             }
             displayFooter()
         }
@@ -491,7 +502,7 @@
             section() {
                 def DiscoverAstructure = ""
                 if (state.configGetAstructure == true) {
-                DiscoverAstructure += "Lightwave devices were discovered. Your devices will be created in the Hubitat ecosystem."
+                DiscoverAstructure += "Lightwave devices were discovered. Your devices will be created in the Hubitat ecosystem.\n\n"
                 } else {
                     DiscoveryAStructure += "There was an error when discovering your Lightwave devices:\n"
                     DiscoverAstructure += "${state.apiLastError}"
@@ -501,7 +512,8 @@
             
             if (state.configGetAstructure == true) {
                 section("Preferences") {
-                    input "installWebhook", "bool", title: "Activate webhooks", description: "", required: true
+                    paragraph "Webhooks are needed to keep your devices in sync with Lightwave. You may choose not to active them.\n\n"
+                    input "installWebhook", "bool", title: "Activate webhooks", description: "", required: true, defaultValue: true
                 }
             }
         }
@@ -771,6 +783,18 @@
     def appButtonHandler(btn) {
         LOGDEBUG("appButtonHandler()")   
         switch (btn) {
+            case "deleteEvents":
+                deleteEvents(getEvents())
+                break
+            case "getEvents":
+                state.getEvents = true
+                getEvents()
+                break
+            case "createEvents":
+                children = getChildDevices()
+                LOGDEBUG("children: ${children}")
+                children.each {addWebhook(it.deviceNetworkId, it.label)}
+                break    
             case "btnHomePage":
 			    state.homePage = true
 			    break
@@ -812,7 +836,7 @@
     def settingsRemove() {
         LOGDEBUG("settingsRemove()")        
         if (state.homePage) state.remove("homePage")
-
+        if (state.getEvents) state.remove("getEvents")
         //automation device state & settings clear
         if (state.autoDevClear) {
             state.finalDeviceList.each { key, value ->
@@ -1171,13 +1195,17 @@
     }
 
     def deleteEvents(events){
+        LOGDEBUG("test $events")
         LOGDEBUG("deleteEvents()")
+        deleteEventStatus = true
 
         if (!events) {
+            LOGDEBUG("No events")
             return
         }
 
         events.each { event ->
+        LOGDEBUG("event ${event}")
             params = [
                 uri: apiEventsPath() + event.id,
                 contentType: "application/json",
@@ -1188,6 +1216,7 @@
                 httpDelete(params) { resp ->
                     if (resp.status == 200) {
                         state.webhookInstalled = false
+                        app.updateSetting("installWebhook", [value: false, type: "bool"])
                         LOGDEBUG("${resp.data}")
                         
                     }
@@ -1195,14 +1224,20 @@
             } catch (Exception e) {
                 def error = e.toString()
                 LOGERROR("deleteEvents() - ${error}")
+                deleteEventStatus == false
                 state.apiLastError = error
             }
+        }
+          if (deleteEventStatus == false) {
+            LOGERROR("Error in deleteEvents() call")
+
+        } else {
+            LOGTRACE("deleteEvents() OK")
         }
     }
 
     def getEvents() {
         LOGDEBUG("getEvents()")
-        deleteEventStatus = false
 
         params = [
             uri: apiEventsPath(),
@@ -1213,23 +1248,17 @@
         try {
             httpGet(params) { resp ->
                 if (resp.status == 200) {
-                    LOGDEBUG("${resp.data}")
+                    if (!state.getEvents) LOGDEBUG("${resp.data}")
+                    if (state.getEvents == true) LOGTRACE("${resp.data}")
                     LOGTRACE("getEvents() OK")
                     return resp.data
                 }
             }
-        } catch (Exception e) {
+        } catch (e) {
             def error = e.toString()
-            LOGERROR("getEvents() - ${error}")
+            LOGTRACE("Error in getEvents() call")
+            LOGERROR("${error}")
             state.apiLastError = error
-            deleteEventStatus == true
-        }
-
-        if (deleteEventStatus == true) {
-            LOGERROR("Error in deleteEvents() call")
-
-        } else {
-            LOGTRACE("Webhooks uninstalled OK")
         }
     }
         
@@ -1519,7 +1548,6 @@
     def addWebhook(dni, label) {
         LOGDEBUG("addWebhook()")
         id = dni[-5..-1]
-        state.webhookInstalled = false
         if (!state.accessToken) {
             createAccessToken() // create our own OAUTH access token to use in webhook url
         }
@@ -1547,6 +1575,7 @@
             httpPost(params) { resp ->
                 if (resp.status == 200) {
                     state.webhookInstalled = true
+                    app.updateSetting("installWebhook", [value: true, type: "bool"])
                     LOGDEBUG("${resp.data}")
                     LOGTRACE("Webhooks installed successfully")
                 }
@@ -1554,6 +1583,7 @@
         } catch (Exception e) {
             def error = e.toString()
             LOGERROR("Webhooks install - ${error}")
+            state.webhookInstalled = false
             app.updateSetting("installWebhook", [value: false, type: "bool"])
             state.apiLastError = error
         }
@@ -1725,12 +1755,9 @@
         if (installWebhook == true && !state.webhookInstalled) {
             children = getChildDevices()
             children.each {addWebhook(it.deviceNetworkId, it.label)}
-            
-            state.webhookInstalled = true
 	    
         } else if (installWebhook == false && state.webhookInstalled) {
     	    deleteEvents(getEvents())
-            state.webhookInstalled = false
         }
         LOGDEBUG("webhook: ${state.webhookInstalled}")
         initialize()
