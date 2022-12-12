@@ -1,10 +1,10 @@
 {
        "packageName": "WogaLWRF Lightwave Integration",
-       "releaseNotes": "v1.2.11 Webhook fix",
+       "releaseNotes": "v1.2.12 oauth fix",
        "documentationLink": "https://community.hubitat.com/t/lightwave-gen2-integration-wogalwrf/63447",
        "communityLink": "https://community.hubitat.com/t/lightwave-gen2-integration-wogalwrf/63447",
        "author": "Patrick Wogan",
-       "version": "1.2.11",
+       "version": "1.2.12",
        "minimumHEVersion": "0.1.4",
        "dateReleased": "2022-12-11",
        "category": "Integrations",
