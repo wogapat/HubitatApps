@@ -671,10 +671,8 @@
 
                 mapOrigFeatures["${origFeatureId}"] = "${origValue}"
             }
-        }
-
-        state.mapOrigFeatures = mapOrigFeatures
         LOGDEBUG("mapOrigFeatures ${mapOrigFeatures}")
+        }
 
         return dynamicPage(name: "pageCreateAutomationDevice", title: "", nextPage: "pageAutomationDeviceCreated", install: false, uninstall: false){
             displayMiniHeader("${settings.automationName}")
@@ -847,7 +845,6 @@
                 app.removeSetting("${key}")
             }
             
-            if (state.mapOrigFeatures) state.remove("mapOrigFeatures")
             if (settings.automationName) app.removeSetting("automationName")
             if (state.availGroupFeatures) state.remove("availGroupFeatures")
 
