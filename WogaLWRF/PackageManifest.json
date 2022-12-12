@@ -16,7 +16,7 @@
            "namespace": "wogapat",
            "location": "https://raw.githubusercontent.com/wogapat/HubitatApps/main/WogaLWRF/App/WogaLWRF.groovy",
            "required": true,
-           "oauth": false,
+           "oauth": true,
            "primary": false
          }
        ],
