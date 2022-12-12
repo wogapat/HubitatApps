@@ -764,7 +764,7 @@
     def pageDeleteAutomationDevice() {
         LOGDEBUG("pageDeleteAutomationDevice()") 
         state.autoDevClear = true
-        return dynamicPage(name: "pageDeleteAutomationDevice", title: "", nextPage: "", install: false, uninstall: false){
+        return dynamicPage(name: "pageDeleteAutomationDevice", title: "", nextPage: "pageAutoDeviceAdmin", install: false, uninstall: false){
             displayMiniHeader("Delete Automation Devices")
             section() {
                 if (state.automationName) {
