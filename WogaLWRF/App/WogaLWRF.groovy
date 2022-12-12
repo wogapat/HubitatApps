@@ -549,8 +549,9 @@
 
     def pageAutoDeviceAdmin() {
         LOGDEBUG("pageAutoDeviceAdmin()")
+        settingsRemove()
+
         return dynamicPage(name: "pageAutoDeviceAdmin", title: "", nextPage: "mainPage", install: false, uninstall: false) {
-            settingsRemove()
             displayMiniHeader("Automation Device Maintenance")
             section(){
                 LOGDEBUG("install state=${app.getInstallationState()}.")
@@ -744,7 +745,8 @@
     }
 
     def pageAmendAutomationDevice() {
-        LOGDEBUG("pageAmendAutomationDevice()") 
+        LOGDEBUG("pageAmendAutomationDevice()")
+        state.autoDevClear =  true 
         if (state.amendAutoDevice) {
             return pageEnterAutomationDevice()
          } else {
@@ -823,7 +825,9 @@
                         LOGDEBUG("amendAutoDevice ${state.amendAutoDevice}")
                         break
                         
-                    case "2D":        
+                    case "2D":
+                        state.configGroupDevices.remove("${dni}")
+                        state.apiBatchFeatureWrite.remove("${dni}")        
                         removeAutomationDevice(dni)
                         break
 
@@ -863,7 +867,7 @@
                     if (settings["${setting}"]) app.removeSetting("${setting}")
                 }
             }
-
+            if (state.automationName) state.remove("automationName")
             if (state.amendAutoDevice) state.remove("amendAutoDevice")
             state.remove("autoDevClear")
         }
