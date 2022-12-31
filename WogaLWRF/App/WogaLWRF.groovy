@@ -22,7 +22,7 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
-    public static String version()      {  return "1.2.12"  }
+    public static String version()      {  return "1.2.13"  }
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     def displayVersionStatus(){
@@ -88,6 +88,7 @@
     private getFeatureWritePath() { getApiUrl()+"/v1/feature/"}
     private getFeatureBatchWritePath() {getApiUrl()+"/v1/features/write"}
     private apiEventsPath() { getApiUrl()+"/v1/events/"}
+    private apiEventIdPath() { getApiUrl()+"/v1/events/"}
     private apiCreateEventsPath() { getApiUrl()+"/v1/events"}
     private getWebhookUrl()		{ getServerUrl()+ "/webhook?access_token="+URLEncoder.encode("${state.accessToken}", "UTF-8") }
     private getServerUrl() 		{ return getFullApiServerUrl() }
@@ -234,7 +235,7 @@
                 state["automation_${settings.automationName}"].features.push(value)
             }
         }
-        if (!state.amendAutoDevice) createAutomationDevice("${settings.automationName}")
+        if (!state.amendAutoDevice && settings.automationName) createAutomationDevice("${settings.automationName}")
     }
 
     def featureCheck() {
@@ -407,14 +408,22 @@
         } 
     }
 
+    def isWebhookInstalled() {
+        result = false
+        if (state.webhookInstalled == true) result = true
+        return result
+    }
+
     def pagePostAppPrefs() {
         LOGDEBUG("pagePostAppPrefs()")
         
-        if (installWebhook == true && !state.webhookInstalled) {
+        if (installWebhook == true && state.webhookInstalled != true) {
             children = getChildDevices()
+
+            LOGDEBUG("children: ${children}")
             children.each {addWebhook(it.deviceNetworkId, it.label)}
         }
-        if (installWebhook != true && state.webhookInstalled) {
+        if (installWebhook != true && state.webhookInstalled == true) {
             deleteEvents(getEvents())
         }
 
@@ -422,8 +431,10 @@
             displayMiniHeader("Application Preferences")
              section() {
                 paragraph "<B>Preferences</B>\n\n"
-        	    input "installWebhook", "bool", title: "Activate webhooks", description: "", submitOnChange: true, defaultValue: (state.webhookInstalled)
+        	    input "installWebhook", "bool", title: "Activate webhooks", description: "", submitOnChange: true, defaultValue: false
                 input "getEvents", "button", title: "Get Registered Webhook Events", submitOnChange: true
+                //input "eventId", "string", title: "Enter the event ID:", multiple: false, required: false, submitOnChange: true
+                //input "getEventsId", "button", title: "Get Registered Webhook Event Information", submitOnChange: true
                 //input "deleteEvents", "button", title: "Delete Events", submitOnChange: true
                 //input "createEvents", "button", title: "Create Events", submitOnChange: true
             }
@@ -790,6 +801,10 @@
                 state.getEvents = true
                 getEvents()
                 break
+            case "getEventsId":
+                state.getEventId = true
+                getEventId(settings.eventId)
+                break
             case "createEvents":
                 children = getChildDevices()
                 LOGDEBUG("children: ${children}")
@@ -836,9 +851,12 @@
     }
 
     def settingsRemove() {
+        //state.remove("configGroupDevices")
         LOGDEBUG("settingsRemove()")        
         if (state.homePage) state.remove("homePage")
         if (state.getEvents) state.remove("getEvents")
+        if (state.getEventId) state.remove("getEventId")
+        if (settings.getEventsId) app.removeSetting("getEventsId")
         //automation device state & settings clear
         if (state.autoDevClear) {
             state.finalDeviceList.each { key, value ->
@@ -1263,7 +1281,31 @@
         }
     }
         
+   def getEventId(eventId) {
+        LOGDEBUG("getEventId()")
+        LOGDEBUG("${eventId}")
+        params = [
+            uri: apiEventsPath() + eventId,
+            contentType: "application/json",
+            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
+        ]
 
+        try {
+            httpGet(params) { resp ->
+                if (resp.status == 200) {
+                    if (!state.getEventId) LOGDEBUG("${resp.data}")
+                    if (state.getEventId == true) LOGTRACE("${resp.data}")
+                    LOGTRACE("getEventId() OK")
+                    return resp.data
+                }
+            }
+        } catch (e) {
+            def error = e.toString()
+            LOGTRACE("Error in getEventId() call")
+            LOGERROR("${error}")
+            state.apiLastError = error
+        }
+    }
     def defineResponseType(featureType) {
         LOGDEBUG("defineResponseType()")
         //setting up a database of features for api response
@@ -1554,9 +1596,17 @@
         }
         arrEvents = []
         
-        state.deviceDetail["${dni}"].features.each {key, feature ->
-            featureId = feature.featureId
-            arrEvents.push('{"type": "feature", "id": "'+featureId+'"}')
+        //don't add for automation devices
+        if (state.configGroupDevices.contains(dni)) {
+            LOGDEBUG("addWebhook - Skipping automation device ${dni}")
+            return
+
+        } else {
+            state.deviceDetail["${dni}"].features.each {key, feature ->
+
+                featureId = feature.featureId
+                arrEvents.push('{"type": "feature", "id": "'+featureId+'"}')
+            }
         }
        
         strBody = '{"events": '+arrEvents+',"url":"'+getWebhookUrl()+'","ref":"'+id+'"}'
@@ -1578,7 +1628,7 @@
                     state.webhookInstalled = true
                     app.updateSetting("installWebhook", [value: true, type: "bool"])
                     LOGDEBUG("${resp.data}")
-                    LOGTRACE("Webhooks installed successfully")
+                    LOGTRACE("Webhook ID ${id} installed successfully")
                 }
             }
         } catch (Exception e) {
