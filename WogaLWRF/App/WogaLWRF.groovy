@@ -22,7 +22,7 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
-    public static String version()      {  return "1.2.13"  }
+    public static String version()      {  return "1.2.14"  }
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     def displayVersionStatus(){
@@ -851,7 +851,6 @@
     }
 
     def settingsRemove() {
-        //state.remove("configGroupDevices")
         LOGDEBUG("settingsRemove()")        
         if (state.homePage) state.remove("homePage")
         if (state.getEvents) state.remove("getEvents")
@@ -1597,7 +1596,7 @@
         arrEvents = []
         
         //don't add for automation devices
-        if (state.configGroupDevices.contains(dni)) {
+        if (state?.configGroupDevices != null && state.configGroupDevices.contains(dni)) {
             LOGDEBUG("addWebhook - Skipping automation device ${dni}")
             return
 
@@ -1606,9 +1605,11 @@
 
                 featureId = feature.featureId
                 arrEvents.push('{"type": "feature", "id": "'+featureId+'"}')
-            }
+        
+            }   
         }
-       
+    
+
         strBody = '{"events": '+arrEvents+',"url":"'+getWebhookUrl()+'","ref":"'+id+'"}'
 
         def soutJson = new JsonSlurper().parseText(strBody)
