@@ -22,7 +22,7 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
-    public static String version()      {  return "1.2.14"  }
+    public static String version()      {  return "1.2.15"  }
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     def displayVersionStatus(){
@@ -65,6 +65,11 @@
         page(name: "pagePostInstallConfigure")
         page(name: "pagePostTestApi")
         page(name: "pagePostAppPrefs")
+        page(name: "pagePostManageWebhooks")
+        page(name: "pageViewWebhooks")
+        page(name: "pageAddAdditionalEndpoint")
+        page(name: "pageCreateExternalEvent")
+        page(name: "pageDeleteAdditionalEndpoint")
         page(name: "pagePostAppDebug")		
         page(name: "startUpTest")
         page(name: "pageCreateDevices")
@@ -238,6 +243,42 @@
         if (!state.amendAutoDevice && settings.automationName) createAutomationDevice("${settings.automationName}")
     }
 
+
+    def createExternalEvent() {
+        result = false
+        state["endpoint_${settings.endpointId}"] = [:]
+        state['endpoint_'+"${settings.endpointId}"].devices = []
+        state['endpoint_'+"${settings.endpointId}"].features = []
+        
+
+        state.finalDeviceList.each { deviceId, name ->
+            if (settings["${deviceId}"] == true) {
+                if (state.deviceDetail["${deviceId}"].features.switch) {
+                    state['endpoint_'+"${settings.endpointId}"].devices.push(name)
+                    state["endpoint_${settings.endpointId}"].features.push(state.deviceDetail["${deviceId}"].features.switch.featureId)
+                    
+                }
+            }
+        }
+        state['endpoint_'+"${settings.endpointId}"].url = settings.endpointUrl
+        if (!state.configExternalEvents) state.configExternalEvents = []
+
+        if (!state.amendEndpoint) {
+            state.configExternalEvents.push(settings.endpointId)
+
+            if (addWebhookExternal(settings.endpointId) == true) {
+                result = true
+            } else {
+                state.configExternalEvents.remove(settings.endpointId)
+                endpointId = 'endpoint_'+"${settings.endpointId}"
+                state.remove(endpointId)
+            }
+        }
+        return result
+    }
+
+
+
     def featureCheck() {
         LOGDEBUG("featureCheck()")
         featureCheck = false
@@ -366,7 +407,7 @@
 
             section(){
                 href "pagePostTestApi", title:"API Configuration & Testing", description:"Tap to configure & test the Lightwave API connection settings"
-                href "pagePostAppPrefs", title: "App Preferences", description: "Tap to configure preferences"
+                if (state.session == true) href "pagePostAppPrefs", title: "App Preferences", description: "Tap to configure preferences"
                 href "pagePostAppDebug", title: "Debug & Feature Read", description: "Tap for debugging"
                 //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
             }
@@ -408,15 +449,11 @@
         } 
     }
 
-    def isWebhookInstalled() {
-        result = false
-        if (state.webhookInstalled == true) result = true
-        return result
-    }
 
     def pagePostAppPrefs() {
         LOGDEBUG("pagePostAppPrefs()")
-        
+        getEvents()
+
         if (installWebhook == true && state.webhookInstalled != true) {
             children = getChildDevices()
 
@@ -429,18 +466,219 @@
 
         return dynamicPage(name: "pagePostAppPrefs", title: "", nextPage: "pagePostInstallConfigure", install: false, uninstall: false){
             displayMiniHeader("Application Preferences")
-             section() {
+            section() {
                 paragraph "<B>Preferences</B>\n\n"
         	    input "installWebhook", "bool", title: "Activate webhooks", description: "", submitOnChange: true, defaultValue: false
-                input "getEvents", "button", title: "Get Registered Webhook Events", submitOnChange: true
+            }
+            if (state?.webhookInstalled != null && state.webhookInstalled == true) {
+                section() {
+                    paragraph getFormat("line")
+                    href "pagePostManageWebhooks", title: "Manage Webhook Events", description: "Tap to manage registered webhook events"
+                }
+            }
+        }
+    }
+
+
+    def pagePostManageWebhooks() {
+        settingsRemove()
+        //state.remove("endpoint_testEvent")
+        LOGDEBUG("pagePostManageWebhooks()")
+
+        return dynamicPage(name: "pagePostManageWebhooks", title: "", nextPage: "pagePostAppPrefs", install: false, uninstall: false){
+            displayMiniHeader("Manage Webooks")
+            section () {
+                href "pageViewWebhooks", title: "View Webhooks", description: "Tap to view registered webhook events"
+                paragraph getFormat("line")
+                href "pageAddAdditionalEndpoint", title: "Add Additional Webhook Endpoint", description: "Tap to add an external webhook endpoint event"
+                if (state?.configExternalEvents != null && state.configExternalEvents) {
+                    href "pageDeleteAdditionalEndpoint", title: "Delete Additional Webhook Endpoint", description: "Tap to remove an external webhook endpoint event"
+                }
                 //input "eventId", "string", title: "Enter the event ID:", multiple: false, required: false, submitOnChange: true
-                //input "getEventsId", "button", title: "Get Registered Webhook Event Information", submitOnChange: true
                 //input "deleteEvents", "button", title: "Delete Events", submitOnChange: true
                 //input "createEvents", "button", title: "Create Events", submitOnChange: true
+                paragraph getFormat("line")
+            }
+        }
+    }
+
+
+    def pageViewWebhooks() {
+        LOGDEBUG("pageViewWebhooks()")
+        state.addExEventClear = true
+        getEvents()
+        internalEvent = false
+
+        return dynamicPage(name: "pageViewWebhooks", title: "", nextPage: "pagePostManageWebhooks", install: false, uninstall: false){
+            displayMiniHeader("Registered Webhook Events")
+            def EventText = ""
+            def WebhookText = ""
+
+            if (state?.webhookEventInfo != null) {
+                section() {
+                    WebhookText += "<B>Event Info, ID: ${state.webhookEventInfo.id}</B>\n"
+                    WebhookText += "Created at: ${state.webhookEventInfo.createdAt}\n"
+                    WebhookText += "Client ID: ${state.webhookEventInfo.clientId}\n"
+                    WebhookText += "URL: ${state.webhookEventInfo.meta.url}\n"
+                    WebhookText += "<b>Events</b>\n"
+                    state.webhookEventInfo.meta.events.each { eventInfo ->
+                        WebhookText += "${eventInfo}\n"
+                    }
+                    WebhookText += "Type: ${state.webhookEventInfo.type}\n"
+                    WebhookText += "Active: ${state.webhookEventInfo.active}\n"
+                    WebhookText += "Version: ${state.webhookEventInfo.version}\n"
+                    WebhookText += "User ID: ${state.webhookEventInfo.userId}\n"
+                    WebhookText += "Updated at: ${state.webhookEventInfo.updatedAt}\n"
+                    paragraph (WebhookText)
+                    input "clearWebhookEventInfo", "button", title: "Clear Information", submitOnChange: true
+                    paragraph getFormat("line")
+                }
+            }
+            section() {
+                input "getEvents", "button", title: "Get Registered Webhook Events", submitOnChange: true
+                paragraph "<B>Registered Webhooks Events</B>\n\n"
+                state.webhookEvents.each { webhookEvent ->
+                    state.finalDeviceList.any { deviceId, deviceName ->
+                        if (webhookEvent.id == deviceId[-5..-1]) {
+                            EventText = "WogaLWRF Device Event: <b>${deviceName}</b>\nEvent ID: ${webhookEvent.id}\n"
+                            internalEvent = true
+                            return true
+                    
+                        } else {
+                            EventText = "External Event ID: <b>${webhookEvent.id}</b>\n"
+                            internalEvent = false
+                            return
+                        }
+                    }
+
+                    //EventText += ("${webhookEvent}\n")
+                    LOGDEBUG("${webhookEvent.id}")
+                    //eventDetail = getEventId(webhookEvent.id)
+                    //EventText += ("${eventDetail}\n\n")
+                    paragraph (EventText)
+                    input "getEventsId@${webhookEvent.id}", "button", title: "Get Id: <b>${webhookEvent.id}</b> Information", submitOnChange: true
+                }
+            }
+        }
+    }
+
+
+    def pageAddAdditionalEndpoint() {
+        LOGDEBUG("pageAddAdditionalEndpoint()")
+        state.addExEventClear = true
+
+        LOGDEBUG("${featureCheck()}")
+        existingEndpoint = state["endpoint_${endpointId}"]
+
+        if (!settings.endpointId || !settings.endpointUrl || featureCheck() != true) {
+            next = "pagePostManageWebhooks"
+        } else  {
+            next = "pageCreateExternalEvent"
+        }
+
+        dynPageProperties = [
+            name:       "pageAddAdditionalEndpoint",
+            title:      "",            
+            nextPage:   next,
+            install:    false,
+            uninstall:  false
+        ]
+        if (!existingEndpoint || existingEndpoint && state.amendEndpoint) {
+            return dynamicPage(dynPageProperties) {
+                if (!state.amendEndpoint) displayMiniHeader("Register an External Webhook Endpoint Event")
+                if (state.amendEndpoint) displayMiniHeader("Amending ${state.amendEndpoint}")
+                section(){
+                    paragraph "<b>Your External Event Details</b>\n"
+                    if (!state.amendEndpoint) input "endpointId", "string", title: "Enter an ID for the event", multiple: false, required: (settings.endpointId), submitOnChange: true
+                    if (state.amendEndpoint) paragraph "${state.amendEndpoint}"
+                    input "endpointUrl", "string", title: "Enter the endpoint url", multiple: false, required: (settings.endpointId), submitOnChange: true
+                }
+
+                section (){
+ 
+                    if (settings.endpointId) if (featureCheck() != true) paragraph "<div style='color:#FF0000;font-weight:bold;font-size:16px;'>Select a device to continue</div>"
+                    paragraph "<b>Available Switches</b>\n\nOnly switch features are added to the external event."
+
+                    state.finalDeviceList.each { deviceId, name ->
+
+                            LOGDEBUG("deviceId: ${deviceId}")
+                            LOGDEBUG("name: ${name}")
+
+                            switchPresent = state.deviceDetail["${deviceId}"].features.switch
+                            dimPresent = state.deviceDetail["${deviceId}"].features.dimLevel
+                            
+                            if (switchPresent)  {
+                                if (!state.amendEndpoint) input "${deviceId}", "bool", title: "${name}", defaultValue: false, submitOnChange: true
+                                if (state.amendEndpoint) input "${deviceId}", "bool", title: "${name}", defaultValue: (state["endpoint${state.amendEndpoint}"].events.contains(name)), submitOnChange: true
+                            }
+                        }
+                }
+            }
+        } else {
+            return dynamicPage(dynPageProperties) {
+                displayMiniHeader("Change The Event Details")
+                section() {
+                    def ErrorMessage = ""
+                    ErrorMessage += "<div style='color:#FF0000;font-weight:bold;font-size:16px;'>Error: Event ID exists - Delete or choose another ID</div>"
+                    paragraph(ErrorMessage)
+                }
+                section(){
+                    paragraph "<b>Your Event Details</b>\n"
+                    input "endpointId", "string", title: "Change the endpoint ID", multiple: false, required: (settings.endpointId), submitOnChange: true
+                }
+            }
+        }
+    }
+
+    def pageDeleteAdditionalEndpoint() {
+        LOGDEBUG("pageDeleteAdditionalEndpoint()") 
+        state.addExEventClear = true
+
+        return dynamicPage(name: "pageDeleteAdditionalEndpoint", title: "", nextPage: "pagePostManageWebhooks", install: false, uninstall: false){
+            displayMiniHeader("Delete External Webhook Endpoint Event")
+            section() {
+                if (state.endpointId && state.lastExtEvtRemove == true) {
+                    def AboutState = ""
+                    AboutState += "<div style='color:#FF0000;font-weight:bold;font-size:16px;'>${state.endpointId} deleted\n\n</div>"
+                    paragraph(AboutState)
+                } else if (state.endpointId && state.lastExtEvtRemove == false) {
+                    def AboutState = ""
+                    AboutState += "<div style='color:#FF0000;font-weight:bold;font-size:16px;'>${state.endpointId} deletion failed\n\n</div>"
+                    paragraph(AboutState)
+                }
+                state.configExternalEvents.each { value ->
+                    input "4D@${value}", "button", title: "Delete ${value}", submitOnChange: false
+                }
+            }
+        }
+    }
+
+
+    def pageCreateExternalEvent() {
+        LOGDEBUG("pageCreateExternalEvent()") 
+        return dynamicPage(name: "pageCreateExternalEvent", nextPage: "pagePostManageWebhooks", title: "", install: false, uninstall: false){
+            def EventCreate = ""
+
+            if (createExternalEvent() == true) {
+                resultText = "successfully"
+            } else {
+                resultText = "unsuccessfully"
+            }
+
+            if (!state.amendEndpoint) {
+                displayMiniHeader("Creation result")
+                EventCreate += "External event ID: ${settings.endpointId} ${resultText} created.\n\n"
+            } else {
+                displayMiniHeader("Amendment result")
+                EventCreate += "External event ID: ${settings.endpointId} ${resultText} amended.\n\n"
+            }
+            section() {
+                paragraph(EventCreate)
             }
             displayFooter()
         }
     }
+
 
     def pagePostAppDebug() {
         LOGDEBUG("pagePostAppDebug()")
@@ -772,6 +1010,7 @@
          }
     }
 
+
     def pageDeleteAutomationDevice() {
         LOGDEBUG("pageDeleteAutomationDevice()") 
         state.autoDevClear = true
@@ -791,19 +1030,37 @@
     }
 
 
+    def removeExternalEvent(webhookId) {
+        LOGDEBUG("removeExternalEvent()")
+        state.lastExtEvtRemove = false
+
+        state.webhookEvents.each { webhookEvent ->
+            LOGDEBUG("${webhookId}  ${webhookEvent.id}")
+            if (webhookId == webhookEvent.id) {
+                state.endpointId = webhookId
+                if (deleteEvent(webhookEvent) == true) {
+                    state.configExternalEvents.remove(webhookId)
+                    webhookDni = 'endpoint_'+"${webhookId}"
+                    state.remove(webhookDni)
+                    state.lastExtEvtRemove = true
+                }
+            }
+        }
+    }
+
+
     def appButtonHandler(btn) {
         LOGDEBUG("appButtonHandler()")   
         switch (btn) {
+            case "clearWebhookEventInfo":
+                state.remove("webhookEventInfo")
+                break
             case "deleteEvents":
                 deleteEvents(getEvents())
                 break
             case "getEvents":
                 state.getEvents = true
                 getEvents()
-                break
-            case "getEventsId":
-                state.getEventId = true
-                getEventId(settings.eventId)
                 break
             case "createEvents":
                 children = getChildDevices()
@@ -828,6 +1085,10 @@
                 dni = arrOfBtn[1]
                 LOGDEBUG("appButtonHandler ${dni}")
                 switch (possMaintBtn) {
+                    case "getEventsId":
+                        state.getEventId = true
+                        getEventId(dni)
+                        break
                     case "2A":
                         state.amendAutoDevice = dni
                         app.updateSetting("automationName", [value: "${state.amendAutoDevice}", type:"string"])
@@ -837,13 +1098,14 @@
                         LOGDEBUG("automation name ${settings.automationName}")
                         LOGDEBUG("amendAutoDevice ${state.amendAutoDevice}")
                         break
-                        
                     case "2D":
                         state.configGroupDevices.remove("${dni}")
                         state.apiBatchFeatureWrite.remove("${dni}")        
                         removeAutomationDevice(dni)
                         break
-
+                    case "4D":
+                        removeExternalEvent(dni)
+                        break
                     default:
                         break
                 }
@@ -851,19 +1113,31 @@
     }
 
     def settingsRemove() {
-        LOGDEBUG("settingsRemove()")        
+        // state.remove("addEndpointClear")
+        // state.remove("configExternalEvents")
+        if (state?.lastExtEvtRemove != null) state.remove("lastExtEvtRemove")
+        if (settings.eventId) app.removeSetting("eventId")
+        if (state.endpointId) state.remove("endpointId")
+
+        LOGDEBUG("settingsRemove()")
+        if (state.webhookEventInfo) state.remove("webhookEventInfo")      
         if (state.homePage) state.remove("homePage")
         if (state.getEvents) state.remove("getEvents")
         if (state.getEventId) state.remove("getEventId")
+        
         if (settings.getEventsId) app.removeSetting("getEventsId")
+        if (settings.endpointUrl) app.removeSetting("endpointUrl")
+        if (settings.endpointId) app.removeSetting("endpointId")
+
         //automation device state & settings clear
-        if (state.autoDevClear) {
+        if (state.autoDevClear || state.addExEventClear) {
             state.finalDeviceList.each { key, value ->
                 app.removeSetting("${key}")
             }
             
             if (settings.automationName) app.removeSetting("automationName")
             if (state.availGroupFeatures) state.remove("availGroupFeatures")
+
 
             state.finalDeviceList.each { key, value ->
                 if (settings["${automationName}_${key}"]) app.removeSetting("${automationName}_${key}")
@@ -883,7 +1157,8 @@
             }
             if (state.automationName) state.remove("automationName")
             if (state.amendAutoDevice) state.remove("amendAutoDevice")
-            state.remove("autoDevClear")
+            if (state.autoDevClear) state.remove("autoDevClear")
+            if (state.addExEventClear) state.remove("addExEventClear")
         }
     }
 
@@ -1212,10 +1487,42 @@
         }
     }
 
+    def deleteEvent(event){
+        LOGDEBUG("deleteEvent()")
+        result = false
+
+        if (!events) {
+            LOGDEBUG("No events")
+            return
+        }
+
+        LOGDEBUG("event ${event}")
+        params = [
+            uri: apiEventsPath() + event.id,
+            contentType: "application/json",
+            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
+        ]
+
+        try {
+            httpDelete(params) { resp ->
+                if (resp.status == 200) {
+                    LOGDEBUG("${resp.data}")
+                    LOGTRACE("deleteEvent() OK")   
+                    result = true 
+                }
+            }
+        } catch (Exception e) {
+            def error = e.toString()
+            LOGERROR("deleteEvent() - ${error}")
+            state.apiLastError = error
+        }
+        return result
+    }
+
+
     def deleteEvents(events){
-        LOGDEBUG("test $events")
         LOGDEBUG("deleteEvents()")
-        deleteEventStatus = true
+        deleteEventsStatus = true
 
         if (!events) {
             LOGDEBUG("No events")
@@ -1234,19 +1541,19 @@
                 httpDelete(params) { resp ->
                     if (resp.status == 200) {
                         state.webhookInstalled = false
+                        state.remove("webhookEvents")
                         app.updateSetting("installWebhook", [value: false, type: "bool"])
                         LOGDEBUG("${resp.data}")
-                        
                     }
                 }
             } catch (Exception e) {
                 def error = e.toString()
                 LOGERROR("deleteEvents() - ${error}")
-                deleteEventStatus == false
+                deleteEventsStatus == false
                 state.apiLastError = error
             }
         }
-          if (deleteEventStatus == false) {
+          if (deleteEventsStatus == false) {
             LOGERROR("Error in deleteEvents() call")
 
         } else {
@@ -1268,6 +1575,8 @@
                 if (resp.status == 200) {
                     if (!state.getEvents) LOGDEBUG("${resp.data}")
                     if (state.getEvents == true) LOGTRACE("${resp.data}")
+                    state.webhookEvents = resp.data
+                    //state.webhookInstalled = true
                     LOGTRACE("getEvents() OK")
                     return resp.data
                 }
@@ -1294,6 +1603,7 @@
                 if (resp.status == 200) {
                     if (!state.getEventId) LOGDEBUG("${resp.data}")
                     if (state.getEventId == true) LOGTRACE("${resp.data}")
+                    state.webhookEventInfo = resp.data
                     LOGTRACE("getEventId() OK")
                     return resp.data
                 }
@@ -1586,6 +1896,49 @@
             LOGERROR("${deviceName} mappings can't be found.")
         }
     }
+
+
+
+    def addWebhookExternal(webhookId) {
+        LOGDEBUG("addWebhookExternal()")
+        result = false
+
+        arrEvents = []
+        webhookUrl = state["endpoint_${webhookId}"].url
+
+        state["endpoint_${webhookId}"].features.each { featureId ->
+            arrEvents.push('{"type": "feature", "id": "'+featureId+'"}')
+        }
+
+        strBody = '{"events": '+arrEvents+',"url":"'+webhookUrl+'","ref":"'+webhookId+'"}'
+
+        def soutJson = new JsonSlurper().parseText(strBody)
+        String jsonBody = JsonOutput.toJson(soutJson)
+        LOGDEBUG("${jsonBody}")
+
+        params = [
+            uri: apiCreateEventsPath(),
+            contentType: "application/json",
+            body: jsonBody,
+            headers: ["Authorization": "bearer ${state.apiAccessToken}", "Content-Type": "application/json"]
+        ]
+
+        try {
+            httpPost(params) { resp ->
+                if (resp.status == 200) {
+                    LOGDEBUG("${resp.data}")
+                    LOGTRACE("Webhook ID ${id} installed successfully")
+                    result = true
+                }
+            }
+        } catch (Exception e) {
+            def error = e.toString()
+            LOGERROR("Webhook external install - ${error}")
+            state.apiLastError = error
+        }
+        return result
+    }
+
 
     def addWebhook(dni, label) {
         LOGDEBUG("addWebhook()")
