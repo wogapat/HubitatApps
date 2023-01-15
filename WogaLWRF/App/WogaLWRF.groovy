@@ -22,7 +22,7 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
-    public static String version()      {  return "1.2.15"  }
+    public static String version()      {  return "1.2.16"  }
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     def displayVersionStatus(){
@@ -203,7 +203,7 @@
 
     def autoDeviceCreate() {
         LOGDEBUG("autoDeviceCreate()")
-        state.apiBatchFeatureWrite = [:]
+        if (state?.apiBatchFeatureWrite == null) state.apiBatchFeatureWrite = [:]
         LOGDEBUG"${settings.automationName}"
         state.apiBatchFeatureWrite["${settings.automationName}"] = [:]
         state.apiBatchFeatureWrite["${settings.automationName}"].features = []
