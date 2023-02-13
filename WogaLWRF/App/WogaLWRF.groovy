@@ -1781,7 +1781,7 @@
 
     def createDevice(id, name) {
         LOGDEBUG("name: ${name}")
-        deviceType = state.deviceDetail["${id}"].parentDevice.parentProductCode
+        deviceType = state.deviceDetail["${id}"].parentDevice.parentProductCode.split("MK")[0] //Remove extras from Product codes like MK3
         LOGDEBUG("deviceType: ${deviceType}")
 
         switch("${deviceType}") {
