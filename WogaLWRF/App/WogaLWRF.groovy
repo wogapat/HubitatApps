@@ -73,6 +73,7 @@
         page(name: "pagePostAppDebug")		
         page(name: "startUpTest")
         page(name: "pageCreateDevices")
+        page(name: "pageCreateNewDevices")
         page(name: "pageDiscoverAstructure")
         page(name: "pageDiscoveryStructures")
         page(name: "pageAutoDeviceAdmin")
@@ -323,7 +324,7 @@
                     href "pagePostAppState", title:"Status", description:"Tap to view the application status"
                     href "pagePostInstallConfigure", title: "App Configuration, Preferences & Testing", description: "Tap to configure app settings, preferences & debugging"
                     href "pageAutoDeviceAdmin", title: "Automation Devices", description: "Add, change or delete devices for routines"
-                    //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
+                    href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
                 }
             }
             if (app.getInstallationState() != "COMPLETE") displayAbout()
@@ -409,7 +410,7 @@
                 href "pagePostTestApi", title:"API Configuration & Testing", description:"Tap to configure & test the Lightwave API connection settings"
                 if (state.session == true) href "pagePostAppPrefs", title: "App Preferences", description: "Tap to configure preferences"
                 href "pagePostAppDebug", title: "Debug & Feature Read", description: "Tap for debugging"
-                //href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
+                href "pageCreateNewDevices", title:"Discover a new device", description:"Tap to discover new Lightwave devices"
             }
         }
     }
@@ -718,6 +719,27 @@
                 } else if (state.configChildrenExist == true) {
                     CreateDevices += "Your devices were created succesfully. Device attributes are polled and populated during initialisation.\n\n I hope you enjoy ${state.ExternalName}.\n\n"
                     CreateDevices += "Please remember to make a donation if you would like to thank the developer.\n\n"
+                }
+                paragraph(CreateDevices)
+            }
+            displayFooter()                           
+        }
+    }
+
+    def pageCreateNewDevices() {
+        LOGDEBUG("pageCreateDevices()")
+        getAstructure()
+        createNewDevices()
+
+        return dynamicPage(name: "pageCreateDevices", title: "", nextPage: "", install: true, uninstall: false){
+            displayMiniHeader("Creating devices")
+            section() {
+                def CreateDevices = ""
+                if (state.newDevices < 1) {
+                    CreateDevices += "No new devices found."
+
+                } else {
+                    CreateDevices += "${state.newDevices} new devices were created succesfully. Device attributes are polled and populated during initialisation."
                 }
                 paragraph(CreateDevices)
             }
@@ -1737,32 +1759,49 @@
     def createDevices(){
         LOGDEBUG("createDevices()")
         state.finalDeviceList.each { key, value ->
-            deviceId = key
-            LOGDEBUG("deviceId: ${deviceId}, value: ${value}")
-            name = value
-            LOGDEBUG("name: ${name}")
-            deviceType = state.deviceDetail["${deviceId}"].parentDevice.parentProductCode
-            LOGDEBUG("deviceType: ${deviceType}")
+            LOGDEBUG("deviceId: ${key}, value: ${value}")
+            createDevice(key, value)
+        }
+    }
 
-            switch("${deviceType}") {
-                case "LW400":
-                    deviceFile = "${state.ExternalName} - ${deviceType}"
-                    break
-
-                case "L42":
-                    deviceFile = "${state.ExternalName} - ${deviceType}"
-                    break
-            
-                default:
-                    deviceFile = "${state.ExternalName} - Lightwave Switch"
+    def createNewDevices() {
+        LOGDEBUG("createNewDevices()")
+        state.newDevices = 0
+        state.finalDeviceList.each { key, value ->
+            LOGDEBUG("deviceId: ${key}, value: ${value}")
+            def currentDevice = getChildDevice(key)
+            if(currentDevice != null) {
+                LOGDEBUG("device with ID: ${key} exsist, skipping")
+            } else {
+                state.newDevices += 1
+                createDevice(key, value)
             }
+        }
+    }
 
-            try {
-                createChildDevice(deviceFile, deviceId, deviceId, name)
-            } catch (Exception e) {
-                def error = e.toString()
-                LOGERROR("Error creating device: ${error}")
-            }
+    def createDevice(id, name) {
+        LOGDEBUG("name: ${name}")
+        deviceType = state.deviceDetail["${id}"].parentDevice.parentProductCode
+        LOGDEBUG("deviceType: ${deviceType}")
+
+        switch("${deviceType}") {
+            case "LW400":
+            deviceFile = "${state.ExternalName} - ${deviceType}"
+            break
+
+            case "L42":
+            deviceFile = "${state.ExternalName} - ${deviceType}"
+            break
+
+            default:
+                deviceFile = "${state.ExternalName} - Lightwave Switch"
+        }
+
+        try {
+            createChildDevice(deviceFile, id, id, name)
+        } catch (Exception e) {
+            def error = e.toString()
+            LOGERROR("Error creating device: ${error}")
         }
     }
 
