@@ -1,6 +1,6 @@
 {
        "packageName": "WogaLWRF Lightwave Integration",
-       "releaseNotes": "v1.2.17 Allows correct driver assignment where mk no. appears in device code.",
+       "releaseNotes": "v1.2.17 Allows correct driver assignment where mk no. appears in device code. credit eliotstocker",
        "documentationLink": "https://community.hubitat.com/t/lightwave-gen2-integration-wogalwrf/63447",
        "communityLink": "https://community.hubitat.com/t/lightwave-gen2-integration-wogalwrf/63447",
        "author": "Patrick Wogan",
