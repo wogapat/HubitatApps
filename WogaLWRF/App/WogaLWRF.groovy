@@ -22,7 +22,7 @@
     import groovy.json.JsonSlurper
     import groovy.json.JsonOutput
 
-    public static String version()      {  return "1.2.16"  }
+    public static String version()      {  return "1.2.17"  }
 	def getThisCopyright(){"&copy; 2020 P Wogan"}
 
     def displayVersionStatus(){
